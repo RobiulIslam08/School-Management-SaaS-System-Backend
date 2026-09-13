@@ -39,6 +39,9 @@ export function createApp() {
   app.get("/health", (_req, res) => {
     res.json({ success: true, data: { ok: true, service: "school-api" }, message: null, errors: null });
   });
+  app.get("/favicon.ico", (_req, res) => {
+    res.status(204).end();
+  });
 
   app.use("/api/v1", apiRouter);
 

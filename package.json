@@ -4,7 +4,7 @@
   "private": true,
   "type": "commonjs",
   "engines": {
-    "node": "24.x"
+    "node": "20.x"
   },
   "scripts": {
     "dev": "tsx watch src/server.ts",
@@ -26,7 +26,6 @@
     "mongoose": "^9.9.5",
     "morgan": "^1.12.0",
     "multer": "^2.3.0",
-    "otplib": "^13.5.0",
     "qrcode": "^1.5.4",
     "zod": "^4.6.1"
   },

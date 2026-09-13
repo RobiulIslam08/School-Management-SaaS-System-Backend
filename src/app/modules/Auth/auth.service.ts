@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { generateSecret, generateURI, verifySync } from "otplib";
 import { env } from "../../../config/env";
+import { generateOtpAuthUri, generateSecret, verifyTotp } from "../../../lib/totp";
 import { PasswordReset } from "../../../models/PasswordReset";
 import { User } from "../../../models/User";
 import { writeAudit } from "../../../services/audit.service";
@@ -58,7 +58,7 @@ export async function verifyOwnerTotp(tempToken: string, code: string) {
   if (!user?.totpSecret) {
     throw new ApiError(400, "Two-factor was not saved for this owner account.");
   }
-  const valid = verifySync({ secret: user.totpSecret, token: code }).valid;
+  const valid = verifyTotp(user.totpSecret, code);
   if (!valid) {
     throw new ApiError(401, "Authenticator code is incorrect. Sign-in was not completed.");
   }
@@ -74,7 +74,7 @@ export async function setupOwnerTotp(userId: string) {
   user.totpSecret = secret;
   user.totpEnabled = true;
   await user.save();
-  const otpauth = generateURI({ issuer: "SchoolSaaS Owner", label: user.email, secret });
+  const otpauth = generateOtpAuthUri({ issuer: "SchoolSaaS Owner", label: user.email, secret });
   return { secret, otpauth };
 }
 
