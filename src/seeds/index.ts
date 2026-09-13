@@ -42,6 +42,19 @@ async function upsertUser(params: {
   );
 }
 
+let seeding: Promise<void> | null = null;
+
+export async function seedOnce(): Promise<void> {
+  if (!env.seedOnBoot) return;
+  if (!seeding) {
+    seeding = seedIfNeeded().catch((error: unknown) => {
+      seeding = null;
+      throw error;
+    });
+  }
+  await seeding;
+}
+
 export async function seedIfNeeded(): Promise<void> {
   const [settings, packs, classes] = await Promise.all([
     SchoolSettings.countDocuments(),
