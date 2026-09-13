@@ -5,6 +5,7 @@ import helmet from "helmet";
 import morgan from "morgan";
 import { env } from "./config/env";
 import { apiRouter } from "./app/routes";
+import { isAllowedOrigin } from "./lib/cors-origin";
 import { hasParsedJsonBody } from "./lib/vercel-request";
 import { errorHandler, notFound } from "./middleware/errorHandler";
 
@@ -18,7 +19,10 @@ export function createApp() {
   );
   app.use(
     cors({
-      origin: env.frontendOrigin,
+      origin: (origin, callback) => {
+        const allowed = isAllowedOrigin(origin, env.frontendOrigin);
+        callback(null, allowed);
+      },
       credentials: true,
     })
   );
@@ -34,10 +38,20 @@ export function createApp() {
   app.use(morgan(env.nodeEnv === "development" ? "dev" : "combined"));
 
   app.get("/", (_req, res) => {
-    res.json({ success: true, data: { ok: true, service: "school-api" }, message: null, errors: null });
+    res.json({
+      success: true,
+      data: { ok: true, service: "school-api", mongo: Boolean(env.mongoUri) },
+      message: null,
+      errors: null,
+    });
   });
   app.get("/health", (_req, res) => {
-    res.json({ success: true, data: { ok: true, service: "school-api" }, message: null, errors: null });
+    res.json({
+      success: true,
+      data: { ok: true, service: "school-api", mongo: Boolean(env.mongoUri) },
+      message: null,
+      errors: null,
+    });
   });
   app.get("/favicon.ico", (_req, res) => {
     res.status(204).end();

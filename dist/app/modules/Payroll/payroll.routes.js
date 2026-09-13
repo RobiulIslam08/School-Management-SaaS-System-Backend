@@ -1,0 +1,16 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.payrollRouter = void 0;
+const express_1 = require("express");
+const authenticate_1 = require("../../../middleware/authenticate");
+const authorize_1 = require("../../../middleware/authorize");
+const requireFeature_1 = require("../../../middleware/requireFeature");
+const validate_1 = require("../../../middleware/validate");
+const asyncHandler_1 = require("../../../utils/asyncHandler");
+const payroll_controller_1 = require("./payroll.controller");
+const payroll_validation_1 = require("./payroll.validation");
+const router = (0, express_1.Router)();
+router.get("/payroll", authenticate_1.authenticate, (0, authorize_1.authorize)("payroll:view"), (0, requireFeature_1.requireFeature)("payroll"), (0, asyncHandler_1.asyncHandler)(payroll_controller_1.payrollController.list));
+router.post("/payroll", authenticate_1.authenticate, (0, authorize_1.authorize)("payroll:create"), (0, requireFeature_1.requireFeature)("payroll"), (0, validate_1.validate)(payroll_validation_1.payrollCreateValidation), (0, asyncHandler_1.asyncHandler)(payroll_controller_1.payrollController.create));
+router.patch("/payroll/:id/pay", authenticate_1.authenticate, (0, authorize_1.authorize)("payroll:approve"), (0, requireFeature_1.requireFeature)("payroll"), (0, asyncHandler_1.asyncHandler)(payroll_controller_1.payrollController.pay));
+exports.payrollRouter = router;

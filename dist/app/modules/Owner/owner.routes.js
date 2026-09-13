@@ -1,0 +1,20 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ownerRouter = void 0;
+const express_1 = require("express");
+const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
+const authenticate_1 = require("../../../middleware/authenticate");
+const authorize_1 = require("../../../middleware/authorize");
+const validate_1 = require("../../../middleware/validate");
+const asyncHandler_1 = require("../../../utils/asyncHandler");
+const owner_controller_1 = require("./owner.controller");
+const owner_validation_1 = require("./owner.validation");
+const router = (0, express_1.Router)();
+const limiter = (0, express_rate_limit_1.default)({ windowMs: 15 * 60 * 1000, limit: 60 });
+const ownerOnly = [limiter, authenticate_1.authenticate, (0, authorize_1.requireRole)("platform_owner")];
+router.get("/owner/packages", ...ownerOnly, (0, asyncHandler_1.asyncHandler)(owner_controller_1.ownerController.getPackages));
+router.patch("/owner/packages", ...ownerOnly, (0, validate_1.validate)(owner_validation_1.ownerPackageValidation), (0, asyncHandler_1.asyncHandler)(owner_controller_1.ownerController.updatePackages));
+exports.ownerRouter = router;

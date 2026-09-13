@@ -22,24 +22,18 @@ async function upsertUser(params: {
   role: Role;
   password: string;
 }): Promise<void> {
-  const passwordHash = await bcrypt.hash(params.password, 10);
-  await User.findOneAndUpdate(
-    { email: params.email.toLowerCase() },
-    {
-      $set: {
-        name: params.name,
-        passwordHash,
-        role: params.role,
-        permissions: ROLE_PERMISSIONS[params.role],
-        isActive: true,
-      },
-      $setOnInsert: {
-        totpEnabled: false,
-        email: params.email.toLowerCase(),
-      },
-    },
-    { upsert: true }
-  );
+  const email = params.email.toLowerCase();
+  const existing = await User.findOne({ email });
+  if (existing) return;
+  await User.create({
+    email,
+    name: params.name,
+    passwordHash: await bcrypt.hash(params.password, 10),
+    role: params.role,
+    permissions: ROLE_PERMISSIONS[params.role],
+    isActive: true,
+    totpEnabled: false,
+  });
 }
 
 let seeding: Promise<void> | null = null;

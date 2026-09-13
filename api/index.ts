@@ -25,17 +25,18 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     const { seedOnce } = await import("../src/seeds");
 
     restoreVercelUrl(req);
-    if (missingEnv.length) {
+    const pathname = requestPathname(req.url);
+    const isPublic = pathname === "/" || pathname === "/health" || pathname === "/favicon.ico";
+    if (missingEnv.length && !isPublic) {
       sendJson(res, 503, {
         success: false,
         data: { missing: missingEnv },
-        message: "Set these environment variables on the Vercel backend project, then Redeploy.",
+        message: "Set MONGODB_URI on the Vercel backend project, then Redeploy.",
         errors: missingEnv.map((field) => ({ field, message: "Required" })),
       });
       return;
     }
 
-    const pathname = requestPathname(req.url);
     if (pathname !== "/" && pathname !== "/health") {
       await connectDb();
       await seedOnce();

@@ -1,0 +1,16 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.routineRouter = void 0;
+const express_1 = require("express");
+const authenticate_1 = require("../../../middleware/authenticate");
+const authorize_1 = require("../../../middleware/authorize");
+const requireFeature_1 = require("../../../middleware/requireFeature");
+const validate_1 = require("../../../middleware/validate");
+const asyncHandler_1 = require("../../../utils/asyncHandler");
+const routine_controller_1 = require("./routine.controller");
+const routine_validation_1 = require("./routine.validation");
+const router = (0, express_1.Router)();
+router.get("/routines", authenticate_1.authenticate, (0, authorize_1.authorize)("academics:view"), (0, requireFeature_1.requireFeature)("academics"), (0, asyncHandler_1.asyncHandler)(routine_controller_1.routineController.list));
+router.post("/routines", authenticate_1.authenticate, (0, authorize_1.authorize)("academics:edit"), (0, requireFeature_1.requireFeature)("academics"), (0, validate_1.validate)(routine_validation_1.routineSlotValidation), (0, asyncHandler_1.asyncHandler)(routine_controller_1.routineController.save));
+router.delete("/routines/:id", authenticate_1.authenticate, (0, authorize_1.authorize)("academics:delete"), (0, requireFeature_1.requireFeature)("academics"), (0, asyncHandler_1.asyncHandler)(routine_controller_1.routineController.remove));
+exports.routineRouter = router;

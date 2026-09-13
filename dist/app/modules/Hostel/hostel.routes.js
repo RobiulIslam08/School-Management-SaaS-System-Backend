@@ -1,0 +1,17 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.hostelRouter = void 0;
+const express_1 = require("express");
+const authenticate_1 = require("../../../middleware/authenticate");
+const authorize_1 = require("../../../middleware/authorize");
+const requireFeature_1 = require("../../../middleware/requireFeature");
+const validate_1 = require("../../../middleware/validate");
+const asyncHandler_1 = require("../../../utils/asyncHandler");
+const hostel_controller_1 = require("./hostel.controller");
+const hostel_validation_1 = require("./hostel.validation");
+const router = (0, express_1.Router)();
+router.get("/hostels", authenticate_1.authenticate, (0, authorize_1.authorize)("hostel:view"), (0, requireFeature_1.requireFeature)("hostel"), (0, asyncHandler_1.asyncHandler)(hostel_controller_1.hostelController.list));
+router.post("/hostels", authenticate_1.authenticate, (0, authorize_1.authorize)("hostel:create"), (0, requireFeature_1.requireFeature)("hostel"), (0, validate_1.validate)(hostel_validation_1.hostelCreateValidation), (0, asyncHandler_1.asyncHandler)(hostel_controller_1.hostelController.create));
+router.patch("/hostels/:id", authenticate_1.authenticate, (0, authorize_1.authorize)("hostel:edit"), (0, requireFeature_1.requireFeature)("hostel"), (0, validate_1.validate)(hostel_validation_1.hostelUpdateValidation), (0, asyncHandler_1.asyncHandler)(hostel_controller_1.hostelController.update));
+router.delete("/hostels/:id", authenticate_1.authenticate, (0, authorize_1.authorize)("hostel:delete"), (0, requireFeature_1.requireFeature)("hostel"), (0, asyncHandler_1.asyncHandler)(hostel_controller_1.hostelController.remove));
+exports.hostelRouter = router;

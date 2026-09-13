@@ -1,0 +1,17 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.transportRouter = void 0;
+const express_1 = require("express");
+const authenticate_1 = require("../../../middleware/authenticate");
+const authorize_1 = require("../../../middleware/authorize");
+const requireFeature_1 = require("../../../middleware/requireFeature");
+const validate_1 = require("../../../middleware/validate");
+const asyncHandler_1 = require("../../../utils/asyncHandler");
+const transport_controller_1 = require("./transport.controller");
+const transport_validation_1 = require("./transport.validation");
+const router = (0, express_1.Router)();
+router.get("/transport", authenticate_1.authenticate, (0, authorize_1.authorize)("transport:view"), (0, requireFeature_1.requireFeature)("transport"), (0, asyncHandler_1.asyncHandler)(transport_controller_1.transportController.list));
+router.post("/transport", authenticate_1.authenticate, (0, authorize_1.authorize)("transport:create"), (0, requireFeature_1.requireFeature)("transport"), (0, validate_1.validate)(transport_validation_1.transportCreateValidation), (0, asyncHandler_1.asyncHandler)(transport_controller_1.transportController.create));
+router.patch("/transport/:id", authenticate_1.authenticate, (0, authorize_1.authorize)("transport:edit"), (0, requireFeature_1.requireFeature)("transport"), (0, validate_1.validate)(transport_validation_1.transportUpdateValidation), (0, asyncHandler_1.asyncHandler)(transport_controller_1.transportController.update));
+router.delete("/transport/:id", authenticate_1.authenticate, (0, authorize_1.authorize)("transport:delete"), (0, requireFeature_1.requireFeature)("transport"), (0, asyncHandler_1.asyncHandler)(transport_controller_1.transportController.remove));
+exports.transportRouter = router;

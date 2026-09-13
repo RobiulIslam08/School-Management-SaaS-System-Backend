@@ -1,0 +1,17 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.noticeRouter = void 0;
+const express_1 = require("express");
+const authenticate_1 = require("../../../middleware/authenticate");
+const authorize_1 = require("../../../middleware/authorize");
+const requireFeature_1 = require("../../../middleware/requireFeature");
+const validate_1 = require("../../../middleware/validate");
+const asyncHandler_1 = require("../../../utils/asyncHandler");
+const notice_controller_1 = require("./notice.controller");
+const notice_validation_1 = require("./notice.validation");
+const router = (0, express_1.Router)();
+router.get("/notices", authenticate_1.authenticate, (0, authorize_1.authorize)("notices:view"), (0, requireFeature_1.requireFeature)("notices"), (0, asyncHandler_1.asyncHandler)(notice_controller_1.noticeController.list));
+router.post("/notices", authenticate_1.authenticate, (0, authorize_1.authorize)("notices:create"), (0, requireFeature_1.requireFeature)("notices"), (0, validate_1.validate)(notice_validation_1.noticeCreateValidation), (0, asyncHandler_1.asyncHandler)(notice_controller_1.noticeController.create));
+router.patch("/notices/:id", authenticate_1.authenticate, (0, authorize_1.authorize)("notices:edit"), (0, requireFeature_1.requireFeature)("notices"), (0, validate_1.validate)(notice_validation_1.noticeUpdateValidation), (0, asyncHandler_1.asyncHandler)(notice_controller_1.noticeController.update));
+router.delete("/notices/:id", authenticate_1.authenticate, (0, authorize_1.authorize)("notices:delete"), (0, requireFeature_1.requireFeature)("notices"), (0, asyncHandler_1.asyncHandler)(notice_controller_1.noticeController.remove));
+exports.noticeRouter = router;

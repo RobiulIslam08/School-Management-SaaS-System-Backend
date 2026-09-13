@@ -1,0 +1,17 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.attendanceRouter = void 0;
+const express_1 = require("express");
+const authenticate_1 = require("../../../middleware/authenticate");
+const authorize_1 = require("../../../middleware/authorize");
+const requireFeature_1 = require("../../../middleware/requireFeature");
+const validate_1 = require("../../../middleware/validate");
+const asyncHandler_1 = require("../../../utils/asyncHandler");
+const attendance_controller_1 = require("./attendance.controller");
+const attendance_validation_1 = require("./attendance.validation");
+const router = (0, express_1.Router)();
+router.get("/attendance", authenticate_1.authenticate, (0, authorize_1.authorize)("attendance:view"), (0, requireFeature_1.requireFeature)("attendance"), (0, asyncHandler_1.asyncHandler)(attendance_controller_1.attendanceController.list));
+router.post("/attendance/bulk", authenticate_1.authenticate, (0, authorize_1.authorize)("attendance:create"), (0, requireFeature_1.requireFeature)("attendance"), (0, validate_1.validate)(attendance_validation_1.attendanceBulkValidation), (0, asyncHandler_1.asyncHandler)(attendance_controller_1.attendanceController.bulk));
+router.get("/attendance/roster", authenticate_1.authenticate, (0, authorize_1.authorize)("attendance:view"), (0, requireFeature_1.requireFeature)("attendance"), (0, asyncHandler_1.asyncHandler)(attendance_controller_1.attendanceController.roster));
+router.get("/attendance/dates", authenticate_1.authenticate, (0, authorize_1.authorize)("attendance:view"), (0, requireFeature_1.requireFeature)("attendance"), (0, asyncHandler_1.asyncHandler)(attendance_controller_1.attendanceController.dates));
+exports.attendanceRouter = router;

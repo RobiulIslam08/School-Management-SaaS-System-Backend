@@ -1,0 +1,14 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.reportsRouter = void 0;
+const express_1 = require("express");
+const authenticate_1 = require("../../../middleware/authenticate");
+const authorize_1 = require("../../../middleware/authorize");
+const requireFeature_1 = require("../../../middleware/requireFeature");
+const asyncHandler_1 = require("../../../utils/asyncHandler");
+const report_controller_1 = require("./report.controller");
+const router = (0, express_1.Router)();
+router.get("/reports/areas", authenticate_1.authenticate, (0, authorize_1.authorize)("reports:view"), (0, requireFeature_1.requireFeature)("reports"), (0, asyncHandler_1.asyncHandler)(report_controller_1.reportController.areas));
+router.get("/reports/talent", authenticate_1.authenticate, (0, authorize_1.authorize)("talent:view"), (0, requireFeature_1.requireFeature)("talent"), (0, asyncHandler_1.asyncHandler)(report_controller_1.reportController.talent));
+router.get("/dashboard", authenticate_1.authenticate, (0, asyncHandler_1.asyncHandler)(report_controller_1.reportController.dashboard));
+exports.reportsRouter = router;

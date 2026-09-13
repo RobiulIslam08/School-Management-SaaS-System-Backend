@@ -1,0 +1,18 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.studentsRouter = void 0;
+const express_1 = require("express");
+const authenticate_1 = require("../../../middleware/authenticate");
+const authorize_1 = require("../../../middleware/authorize");
+const requireFeature_1 = require("../../../middleware/requireFeature");
+const validate_1 = require("../../../middleware/validate");
+const asyncHandler_1 = require("../../../utils/asyncHandler");
+const student_controller_1 = require("./student.controller");
+const student_validation_1 = require("./student.validation");
+const router = (0, express_1.Router)();
+router.get("/students", authenticate_1.authenticate, (0, authorize_1.authorize)("students:view"), (0, requireFeature_1.requireFeature)("students"), (0, asyncHandler_1.asyncHandler)(student_controller_1.studentController.list));
+router.get("/students/:id", authenticate_1.authenticate, (0, authorize_1.authorize)("students:view"), (0, requireFeature_1.requireFeature)("students"), (0, asyncHandler_1.asyncHandler)(student_controller_1.studentController.get));
+router.post("/students", authenticate_1.authenticate, (0, authorize_1.authorize)("students:create"), (0, requireFeature_1.requireFeature)("admission"), (0, validate_1.validate)(student_validation_1.studentCreateValidation), (0, asyncHandler_1.asyncHandler)(student_controller_1.studentController.create));
+router.patch("/students/:id", authenticate_1.authenticate, (0, authorize_1.authorize)("students:edit"), (0, requireFeature_1.requireFeature)("students"), (0, validate_1.validate)(student_validation_1.studentUpdateValidation), (0, asyncHandler_1.asyncHandler)(student_controller_1.studentController.update));
+router.post("/students/promote", authenticate_1.authenticate, (0, authorize_1.authorize)("students:approve"), (0, requireFeature_1.requireFeature)("students"), (0, validate_1.validate)(student_validation_1.promoteValidation), (0, asyncHandler_1.asyncHandler)(student_controller_1.studentController.promote));
+exports.studentsRouter = router;

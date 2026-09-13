@@ -1,0 +1,17 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.publicRouter = void 0;
+const express_1 = require("express");
+const authenticate_1 = require("../../../middleware/authenticate");
+const authorize_1 = require("../../../middleware/authorize");
+const validate_1 = require("../../../middleware/validate");
+const asyncHandler_1 = require("../../../utils/asyncHandler");
+const public_controller_1 = require("./public.controller");
+const public_validation_1 = require("./public.validation");
+const router = (0, express_1.Router)();
+router.get("/public/branding", (0, asyncHandler_1.asyncHandler)(public_controller_1.publicController.branding));
+router.get("/public/classes", (0, asyncHandler_1.asyncHandler)(public_controller_1.publicController.classes));
+router.post("/public/admissions", (0, validate_1.validate)(public_validation_1.publicAdmissionValidation), (0, asyncHandler_1.asyncHandler)(public_controller_1.publicController.apply));
+router.get("/portal/guardian", authenticate_1.authenticate, (0, authorize_1.requireRole)("guardian", "school_admin", "platform_owner"), (0, asyncHandler_1.asyncHandler)(public_controller_1.publicController.guardian));
+router.get("/portal/teacher", authenticate_1.authenticate, (0, authorize_1.requireRole)("teacher", "school_admin", "platform_owner"), (0, asyncHandler_1.asyncHandler)(public_controller_1.publicController.teacher));
+exports.publicRouter = router;

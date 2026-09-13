@@ -1,0 +1,31 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.msg = void 0;
+exports.msg = {
+    saved: (entity) => `${entity} saved successfully.`,
+    created: (entity) => `${entity} saved successfully.`,
+    updated: (entity) => `${entity} updated successfully.`,
+    notFound: (entity) => `${entity} was not updated because it was not found.`,
+    notFoundRead: (entity) => `${entity} was not found.`,
+    noFields: (entity) => `${entity} was not updated. No fields were sent.`,
+    noChanges: (entity) => `${entity} was not updated because no values changed.`,
+    duplicate: (entity, field) => `${entity} was not saved. ${field} already exists.`,
+    invalid: (entity, reason) => `${entity} was not saved. ${reason}`,
+    updateBlocked: (entity, reason) => `${entity} was not updated. ${reason}`,
+    archived: (entity) => `${entity} archived successfully.`,
+    deleted: (entity) => `${entity} deleted successfully.`,
+    loaded: (entity, count) => typeof count === "number" ? `${entity} loaded (${count}).` : `${entity} loaded successfully.`,
+    signedIn: "Signed in successfully.",
+    signedOut: "Signed out successfully.",
+    sessionExpired: "Session expired. Please sign in again.",
+    loginFailed: "Sign-in failed. Email or password is incorrect.",
+    twoFactorNeeded: "Password accepted. Enter your authenticator code to finish sign-in.",
+    twoFactorSaved: "Two-factor authentication saved successfully.",
+    resetRequested: "If this email is registered, a password reset code was sent.",
+    resetDone: "Password updated successfully. Sign in with your new password.",
+    resetInvalid: "Password was not updated. The reset code is invalid or has expired.",
+    resetTooMany: "Password was not updated. Too many incorrect codes. Request a new code.",
+    validation: "Data was not saved. Validation failed. Check the highlighted fields.",
+    server: "Data was not saved due to a server error. Please try again.",
+    featureOff: (entity) => `${entity} is not available because the feature is turned off.`,
+};

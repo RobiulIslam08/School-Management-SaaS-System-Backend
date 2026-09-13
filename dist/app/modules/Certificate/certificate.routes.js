@@ -1,0 +1,18 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.certificateRouter = void 0;
+const express_1 = require("express");
+const authenticate_1 = require("../../../middleware/authenticate");
+const authorize_1 = require("../../../middleware/authorize");
+const requireFeature_1 = require("../../../middleware/requireFeature");
+const validate_1 = require("../../../middleware/validate");
+const asyncHandler_1 = require("../../../utils/asyncHandler");
+const certificate_controller_1 = require("./certificate.controller");
+const certificate_validation_1 = require("./certificate.validation");
+const router = (0, express_1.Router)();
+router.get("/certificates/templates", authenticate_1.authenticate, (0, authorize_1.authorize)("certificates:view"), (0, requireFeature_1.requireFeature)("certificates"), (0, asyncHandler_1.asyncHandler)(certificate_controller_1.certificateController.listTemplates));
+router.patch("/certificates/templates/:id", authenticate_1.authenticate, (0, authorize_1.authorize)("certificates:edit"), (0, requireFeature_1.requireFeature)("certificates"), (0, validate_1.validate)(certificate_validation_1.updateTemplateValidation), (0, asyncHandler_1.asyncHandler)(certificate_controller_1.certificateController.updateTemplate));
+router.get("/certificates", authenticate_1.authenticate, (0, authorize_1.authorize)("certificates:view"), (0, requireFeature_1.requireFeature)("certificates"), (0, asyncHandler_1.asyncHandler)(certificate_controller_1.certificateController.listIssued));
+router.get("/certificates/:id", authenticate_1.authenticate, (0, authorize_1.authorize)("certificates:view"), (0, requireFeature_1.requireFeature)("certificates"), (0, asyncHandler_1.asyncHandler)(certificate_controller_1.certificateController.getIssued));
+router.post("/certificates", authenticate_1.authenticate, (0, authorize_1.authorize)("certificates:create"), (0, requireFeature_1.requireFeature)("certificates"), (0, validate_1.validate)(certificate_validation_1.issueCertificateValidation), (0, asyncHandler_1.asyncHandler)(certificate_controller_1.certificateController.issue));
+exports.certificateRouter = router;

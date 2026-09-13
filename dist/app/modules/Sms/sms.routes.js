@@ -1,0 +1,15 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.smsRouter = void 0;
+const express_1 = require("express");
+const authenticate_1 = require("../../../middleware/authenticate");
+const authorize_1 = require("../../../middleware/authorize");
+const requireFeature_1 = require("../../../middleware/requireFeature");
+const validate_1 = require("../../../middleware/validate");
+const asyncHandler_1 = require("../../../utils/asyncHandler");
+const sms_controller_1 = require("./sms.controller");
+const sms_validation_1 = require("./sms.validation");
+const router = (0, express_1.Router)();
+router.get("/sms", authenticate_1.authenticate, (0, authorize_1.authorize)("sms:view"), (0, requireFeature_1.requireFeature)("sms"), (0, asyncHandler_1.asyncHandler)(sms_controller_1.smsController.list));
+router.post("/sms", authenticate_1.authenticate, (0, authorize_1.authorize)("sms:create"), (0, requireFeature_1.requireFeature)("sms"), (0, validate_1.validate)(sms_validation_1.smsSendValidation), (0, asyncHandler_1.asyncHandler)(sms_controller_1.smsController.send));
+exports.smsRouter = router;

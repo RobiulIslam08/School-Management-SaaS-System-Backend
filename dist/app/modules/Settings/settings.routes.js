@@ -1,0 +1,15 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.settingsRouter = void 0;
+const express_1 = require("express");
+const authenticate_1 = require("../../../middleware/authenticate");
+const authorize_1 = require("../../../middleware/authorize");
+const requireFeature_1 = require("../../../middleware/requireFeature");
+const validate_1 = require("../../../middleware/validate");
+const asyncHandler_1 = require("../../../utils/asyncHandler");
+const settings_controller_1 = require("./settings.controller");
+const settings_validation_1 = require("./settings.validation");
+const router = (0, express_1.Router)();
+router.get("/settings", authenticate_1.authenticate, (0, authorize_1.authorize)("settings:view"), (0, requireFeature_1.requireFeature)("settings"), (0, asyncHandler_1.asyncHandler)(settings_controller_1.settingsController.get));
+router.patch("/settings", authenticate_1.authenticate, (0, authorize_1.authorize)("settings:edit"), (0, requireFeature_1.requireFeature)("settings"), (0, validate_1.validate)(settings_validation_1.settingsUpdateValidation), (0, asyncHandler_1.asyncHandler)(settings_controller_1.settingsController.update));
+exports.settingsRouter = router;
