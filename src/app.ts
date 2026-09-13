@@ -33,8 +33,11 @@ export function createApp() {
   app.use(cookieParser());
   app.use(morgan(env.nodeEnv === "development" ? "dev" : "combined"));
 
+  app.get("/", (_req, res) => {
+    res.json({ success: true, data: { ok: true, service: "school-api" }, message: null, errors: null });
+  });
   app.get("/health", (_req, res) => {
-    res.json({ success: true, data: { ok: true }, message: null, errors: null });
+    res.json({ success: true, data: { ok: true, service: "school-api" }, message: null, errors: null });
   });
 
   app.use("/api/v1", apiRouter);

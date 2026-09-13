@@ -29,4 +29,9 @@ describe("restoreVercelUrl", () => {
     restoreVercelUrl(req);
     expect(req.url).toBe("/api/v1/classes?section=A");
   });
+
+  it("does not throw on a malformed URL", () => {
+    const req = fakeReq("http://%");
+    expect(() => restoreVercelUrl(req)).not.toThrow();
+  });
 });

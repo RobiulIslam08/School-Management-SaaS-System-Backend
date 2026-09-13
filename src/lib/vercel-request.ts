@@ -11,9 +11,23 @@ function header(req: IncomingMessage, name: string): string | undefined {
  * Vercel rewrites every path to `/api`. Restore the public URL so Express
  * still sees `/health` and `/api/v1/...`.
  */
+export function requestPathname(raw = "/"): string {
+  try {
+    return new URL(raw, "http://vercel.invalid").pathname;
+  } catch {
+    return raw.split("?")[0] || "/";
+  }
+}
+
 export function restoreVercelUrl(req: IncomingMessage): void {
   const raw = req.url ?? "/";
-  const url = new URL(raw, "http://vercel.invalid");
+  let url: URL;
+  try {
+    url = new URL(raw, "http://vercel.invalid");
+  } catch {
+    req.url = "/";
+    return;
+  }
   const injected = url.searchParams.get("__path");
   if (injected) {
     url.searchParams.delete("__path");
