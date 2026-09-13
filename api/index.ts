@@ -41,14 +41,15 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       await seedOnce();
     }
 
-    if (!app) app = createApp();
+    const server = app ?? createApp();
+    app = server;
 
     await new Promise<void>((resolve, reject) => {
       const done = () => resolve();
       res.once("finish", done);
       res.once("close", done);
       try {
-        const maybe = app(req, res) as void | Promise<void>;
+        const maybe = server(req, res) as void | Promise<void>;
         if (maybe && typeof maybe.then === "function") {
           void maybe.catch(reject);
         }

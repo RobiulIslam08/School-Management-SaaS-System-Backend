@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "noEmit": true,
+    "outDir": "dist-api-check"
+  },
+  "include": ["api/index.ts", "src"]
+}

@@ -4,11 +4,11 @@
   "private": true,
   "type": "commonjs",
   "engines": {
-    "node": "20.x"
+    "node": "24.x"
   },
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.api.json --noEmit",
     "start": "node dist/server.js",
     "seed": "tsx src/seeds/index.ts",
     "test": "jest --runInBand"
