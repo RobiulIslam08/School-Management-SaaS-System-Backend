@@ -11,12 +11,40 @@ const helmet_1 = __importDefault(require("helmet"));
 const morgan_1 = __importDefault(require("morgan"));
 const env_1 = require("./config/env");
 const routes_1 = require("./app/routes");
+const connect_1 = require("./db/connect");
 const cors_origin_1 = require("./lib/cors-origin");
 const vercel_request_1 = require("./lib/vercel-request");
 const errorHandler_1 = require("./middleware/errorHandler");
+const seeds_1 = require("./seeds");
+function isPublicPath(path) {
+    return path === "/" || path === "/health" || path === "/favicon.ico" || path === "/favicon.png";
+}
 function createApp() {
     const app = (0, express_1.default)();
     app.set("trust proxy", 1);
+    app.use((req, res, next) => {
+        void (async () => {
+            try {
+                if (env_1.missingEnv.length && !isPublicPath(req.path)) {
+                    res.status(503).json({
+                        success: false,
+                        data: { missing: env_1.missingEnv },
+                        message: "Set MONGODB_URI on the Vercel backend project, then Redeploy.",
+                        errors: env_1.missingEnv.map((field) => ({ field, message: "Required" })),
+                    });
+                    return;
+                }
+                if (!isPublicPath(req.path)) {
+                    await (0, connect_1.connectDb)();
+                    await (0, seeds_1.seedOnce)();
+                }
+                next();
+            }
+            catch (error) {
+                next(error);
+            }
+        })();
+    });
     app.use((0, helmet_1.default)({
         crossOriginResourcePolicy: { policy: "cross-origin" },
     }));
@@ -56,8 +84,13 @@ function createApp() {
     app.get("/favicon.ico", (_req, res) => {
         res.status(204).end();
     });
+    app.get("/favicon.png", (_req, res) => {
+        res.status(204).end();
+    });
     app.use("/api/v1", routes_1.apiRouter);
     app.use(errorHandler_1.notFound);
     app.use(errorHandler_1.errorHandler);
     return app;
 }
+const app = createApp();
+exports.default = app;

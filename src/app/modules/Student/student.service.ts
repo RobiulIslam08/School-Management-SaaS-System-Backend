@@ -23,7 +23,7 @@ export async function listStudents(query: Record<string, unknown>) {
 
 export async function getStudent(id: string | undefined) {
   const recordId = requireId(id, "Student");
-  const item = await Student.findById(recordId).populate("classId", "name code sections");
+  const item = await Student.findById(recordId).populate("classId", "name code sections group");
   if (!item) throw new ApiError(404, msg.notFoundRead("Student"));
   return item;
 }

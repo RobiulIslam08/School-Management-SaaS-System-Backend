@@ -9,6 +9,11 @@ export const examCreateValidation = z.object({
   endDate: z.string().optional(),
 });
 
+export const examUpdateValidation = z.object({
+  name: z.string().min(1).optional(),
+  code: z.string().min(1).optional(),
+});
+
 export const gradingRuleValidation = z.object({
   name: z.string(),
   academicYear: z.string(),

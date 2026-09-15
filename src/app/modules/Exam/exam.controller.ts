@@ -6,6 +6,7 @@ import { ok } from "../../../utils/respond";
 import {
   createExam,
   createGradingRule,
+  deleteExam,
   publishExam,
   exportResults,
   finalGrade,
@@ -13,6 +14,7 @@ import {
   listGradingRules,
   listResults,
   recomputeMerit,
+  updateExam,
   upsertResult,
 } from "./exam.service";
 
@@ -25,6 +27,14 @@ export const examController = {
   async createExam(req: Request, res: Response): Promise<void> {
     const created = await createExam(req.body);
     ok(res, created, msg.saved("Exam type"), 201);
+  },
+  async updateExam(req: Request, res: Response): Promise<void> {
+    const updated = await updateExam(routeParam(req.params.id), req.body);
+    ok(res, updated, msg.updated("Exam"));
+  },
+  async deleteExam(req: Request, res: Response): Promise<void> {
+    const data = await deleteExam(routeParam(req.params.id));
+    ok(res, data, msg.deleted("Exam"));
   },
   async publish(req: Request, res: Response): Promise<void> {
     const updated = await publishExam(routeParam(req.params.id), Boolean(req.body.isPublished));

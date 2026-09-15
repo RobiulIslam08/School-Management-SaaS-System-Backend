@@ -4,7 +4,7 @@ import type { AuthUser } from "../../../types/express";
 import { ApiError } from "../../../utils/ApiError";
 import { msg } from "../../../utils/messages";
 import { requireId } from "../../../utils/persist";
-import { ledgerStatus } from "./fee.utils";
+import { ledgerStatus, aggregateFeesByClass } from "./fee.utils";
 import type { PaymentInput } from "./fee.interface";
 
 export { ledgerStatus };
@@ -60,7 +60,11 @@ export async function addPayment(ledgerId: string | undefined, payment: PaymentI
 }
 
 export async function feeSummary() {
-  const ledgers = await FeeLedger.find({ deletedAt: null });
+  const ledgers = await FeeLedger.find({ deletedAt: null }).populate({
+    path: "studentId",
+    select: "classId",
+    populate: { path: "classId", select: "name" },
+  });
   const due = ledgers.reduce((sum, item) => sum + Math.max(item.dueAmount - item.discount - item.paidAmount, 0), 0);
   const collected = ledgers.reduce((sum, item) => sum + item.paidAmount, 0);
   const byMethod: Record<string, number> = {};
@@ -69,7 +73,7 @@ export async function feeSummary() {
       byMethod[payment.method] = (byMethod[payment.method] ?? 0) + payment.amount;
     });
   });
-  return { due, collected, byMethod, count: ledgers.length };
+  return { due, collected, byMethod, count: ledgers.length, byClass: aggregateFeesByClass(ledgers) };
 }
 
 export async function archiveLedger(id: string | undefined) {

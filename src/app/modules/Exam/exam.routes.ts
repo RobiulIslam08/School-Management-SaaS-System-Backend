@@ -5,7 +5,7 @@ import { requireFeature } from "../../../middleware/requireFeature";
 import { validate } from "../../../middleware/validate";
 import { asyncHandler } from "../../../utils/asyncHandler";
 import { examController } from "./exam.controller";
-import { examCreateValidation, gradingRuleValidation, resultSaveValidation } from "./exam.validation";
+import { examCreateValidation, examUpdateValidation, gradingRuleValidation, resultSaveValidation } from "./exam.validation";
 
 const router = Router();
 
@@ -24,6 +24,21 @@ router.patch(
   authorize("results:approve"),
   requireFeature("exams"),
   asyncHandler(examController.publish)
+);
+router.patch(
+  "/exams/:id",
+  authenticate,
+  authorize("exams:edit"),
+  requireFeature("exams"),
+  validate(examUpdateValidation),
+  asyncHandler(examController.updateExam)
+);
+router.delete(
+  "/exams/:id",
+  authenticate,
+  authorize("exams:delete"),
+  requireFeature("exams"),
+  asyncHandler(examController.deleteExam)
 );
 router.get(
   "/grading-rules",

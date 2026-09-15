@@ -33,6 +33,30 @@ export async function publishExam(id: string | undefined, isPublished: boolean) 
   return exam;
 }
 
+export async function updateExam(id: string | undefined, body: { name?: string; code?: string }) {
+  const exam = await ExamType.findById(id);
+  if (!exam) throw new ApiError(404, msg.notFound("Exam"));
+  const name = body.name?.trim();
+  const code = body.code?.trim();
+  if (!name && !code) throw new ApiError(400, msg.noFields("Exam"));
+  if (name) exam.name = name;
+  if (code) exam.code = code;
+  await exam.save();
+  return exam;
+}
+
+export async function deleteExam(id: string | undefined) {
+  const examId = id ?? "";
+  const exam = await ExamType.findById(examId);
+  if (!exam) throw new ApiError(404, msg.notFound("Exam"));
+  const used = await Result.countDocuments({ examTypeId: examId, deletedAt: null });
+  if (used) {
+    throw new ApiError(400, msg.updateBlocked("Exam", "Results already exist for this exam."));
+  }
+  await exam.deleteOne();
+  return { id: exam._id };
+}
+
 export async function listGradingRules(academicYear?: string) {
   return GradingRule.find(academicYear ? { academicYear } : {}).populate("weights.examTypeId", "name code");
 }
@@ -43,7 +67,8 @@ export async function createGradingRule(body: {
   isDefault?: boolean;
   classId?: string;
 } & Record<string, unknown>) {
-  if (!weightsSumTo100(body.weights)) {
+  const weights = body.weights.filter((item) => item.weight > 0);
+  if (!weightsSumTo100(weights)) {
     throw new ApiError(400, msg.invalid("Grading formula", "Weights must add up to 100."));
   }
   if (body.isDefault && !body.classId) {
@@ -52,7 +77,7 @@ export async function createGradingRule(body: {
       { isDefault: false }
     );
   }
-  return GradingRule.create(body);
+  return GradingRule.create({ ...body, weights });
 }
 
 export async function listResults(filterInput: {
