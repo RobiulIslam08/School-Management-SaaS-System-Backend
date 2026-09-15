@@ -2,7 +2,7 @@ import { randomInt } from "crypto";
 import type { Response } from "express";
 import jwt from "jsonwebtoken";
 import { env } from "../../../config/env";
-import { clearAuthCookies, setAuthCookies } from "../../../lib/cookies";
+import { clearAuthCookies, setAuthCookies, ACCESS_TOKEN_MS, REFRESH_TOKEN_MS } from "../../../lib/cookies";
 import { ROLE_PERMISSIONS, type Role } from "../../../lib/permissions";
 import { User } from "../../../models/User";
 import type { PublicUser } from "./auth.interface";
@@ -37,11 +37,11 @@ export function isEligibleForPortal(role: Role, ownerPortal: boolean): boolean {
 }
 
 export function signAccess(userId: string): string {
-  return jwt.sign({ sub: userId }, env.jwtSecret, { expiresIn: "15m" });
+  return jwt.sign({ sub: userId }, env.jwtSecret, { expiresIn: Math.floor(ACCESS_TOKEN_MS / 1000) });
 }
 
 export function signRefresh(userId: string): string {
-  return jwt.sign({ sub: userId }, env.jwtRefreshSecret, { expiresIn: "7d" });
+  return jwt.sign({ sub: userId }, env.jwtRefreshSecret, { expiresIn: Math.floor(REFRESH_TOKEN_MS / 1000) });
 }
 
 export function tokensFor(userId: string): { accessToken: string; refreshToken: string } {

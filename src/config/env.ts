@@ -1,6 +1,6 @@
-import { randomBytes } from "crypto";
 import dotenv from "dotenv";
 import path from "path";
+import { resolveAppSecret } from "./secrets";
 
 // Vercel injects env in the dashboard. Loading a missing `.env` only logs noise.
 if (!process.env.VERCEL) {
@@ -25,12 +25,6 @@ function required(name: string, fallback?: string): string {
   return value;
 }
 
-function resolveSecret(name: string, fallback: string): string {
-  if (process.env[name]) return process.env[name] as string;
-  if (!isProduction) return fallback;
-  return randomBytes(32).toString("hex");
-}
-
 if (isProduction && !process.env.MONGODB_URI) rememberMissing("MONGODB_URI");
 
 const cookieSameSiteRaw = (process.env.COOKIE_SAMESITE ?? "lax").toLowerCase();
@@ -42,8 +36,20 @@ export const env = {
   mongoUri: isProduction
     ? (process.env.MONGODB_URI ?? "")
     : required("MONGODB_URI", "mongodb://127.0.0.1:27017/school_management"),
-  jwtSecret: resolveSecret("JWT_SECRET", DEV_JWT),
-  jwtRefreshSecret: resolveSecret("JWT_REFRESH_SECRET", DEV_REFRESH),
+  jwtSecret: resolveAppSecret({
+    envValue: process.env.JWT_SECRET,
+    name: "JWT_SECRET",
+    isProduction,
+    devFallback: DEV_JWT,
+    mongoUri: process.env.MONGODB_URI ?? "",
+  }),
+  jwtRefreshSecret: resolveAppSecret({
+    envValue: process.env.JWT_REFRESH_SECRET,
+    name: "JWT_REFRESH_SECRET",
+    isProduction,
+    devFallback: DEV_REFRESH,
+    mongoUri: process.env.MONGODB_URI ?? "",
+  }),
   frontendOrigin: process.env.FRONTEND_ORIGIN ?? (isProduction ? "" : "http://localhost:3000"),
   cookieSecure: process.env.COOKIE_SECURE === "true" || isProduction,
   cookieSameSite: cookieSameSite as "lax" | "none" | "strict",

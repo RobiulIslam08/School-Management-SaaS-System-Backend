@@ -1,6 +1,9 @@
 import type { CookieOptions, Response } from "express";
 import { env, isProd } from "../config/env";
 
+export const ACCESS_TOKEN_MS = 15 * 60 * 1000;
+export const REFRESH_TOKEN_MS = 30 * 24 * 60 * 60 * 1000;
+
 const base: CookieOptions = {
   httpOnly: true,
   sameSite: env.cookieSameSite,
@@ -9,8 +12,8 @@ const base: CookieOptions = {
 };
 
 export function setAuthCookies(res: Response, accessToken: string, refreshToken: string): void {
-  res.cookie("accessToken", accessToken, { ...base, maxAge: 15 * 60 * 1000 });
-  res.cookie("refreshToken", refreshToken, { ...base, maxAge: 7 * 24 * 60 * 60 * 1000 });
+  res.cookie("accessToken", accessToken, { ...base, maxAge: ACCESS_TOKEN_MS });
+  res.cookie("refreshToken", refreshToken, { ...base, maxAge: REFRESH_TOKEN_MS });
 }
 
 export function clearAuthCookies(res: Response): void {
