@@ -6,6 +6,9 @@ const addressSchema = new Schema(
     district: { type: String, default: "" },
     upazila: { type: String, default: "" },
     area: { type: String, default: "" },
+    holding: { type: String, default: "" },
+    block: { type: String, default: "" },
+    road: { type: String, default: "" },
   },
   { _id: false }
 );
@@ -34,6 +37,9 @@ export interface StudentDoc {
     district: string;
     upazila: string;
     area: string;
+    holding: string;
+    block: string;
+    road: string;
   };
   guardian: {
     fatherName: string;

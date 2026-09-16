@@ -169,7 +169,7 @@ export async function dashboard(): Promise<DashboardStats> {
         type: "payment" as const,
         title: student?.name ?? item.title,
         at: (item.updatedAt as Date).toISOString(),
-        href: "/fees",
+        href: "/fees/collected",
       };
     }),
     ...recentNotices.map((item) => ({

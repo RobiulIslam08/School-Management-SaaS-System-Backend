@@ -5,6 +5,9 @@ export const addressSchema = z.object({
   district: z.string().optional(),
   upazila: z.string().optional(),
   area: z.string().optional(),
+  holding: z.string().optional(),
+  block: z.string().optional(),
+  road: z.string().optional(),
 });
 
 export const guardianSchema = z.object({
