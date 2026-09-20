@@ -10,6 +10,13 @@ import { noticeCreateValidation, noticeUpdateValidation } from "./notice.validat
 const router = Router();
 
 router.get("/notices", authenticate, authorize("notices:view"), requireFeature("notices"), asyncHandler(noticeController.list));
+router.get(
+  "/notices/:id",
+  authenticate,
+  authorize("notices:view"),
+  requireFeature("notices"),
+  asyncHandler(noticeController.get)
+);
 router.post(
   "/notices",
   authenticate,

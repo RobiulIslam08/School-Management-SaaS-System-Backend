@@ -1,5 +1,6 @@
 export type SubjectCreateBody = {
   name: string;
+  nameBn?: string;
   code: string;
   classId: string;
   group?: "Science" | "Business" | "Humanities" | "Common";

@@ -12,7 +12,10 @@ import { Teacher } from "../../../models/Teacher";
 import { ApiError } from "../../../utils/ApiError";
 import { msg } from "../../../utils/messages";
 import { createStudent } from "../Student/student.service";
+import { listPublicNotices } from "../Notice/notice.service";
 import { requirePublicAdmission, resolveGuardianStudentId } from "./public.utils";
+
+export { listPublicNotices };
 
 export async function publicBranding() {
   const [settings, pack] = await Promise.all([SchoolSettings.findOne(), FeaturePackage.findOne()]);
@@ -20,6 +23,10 @@ export async function publicBranding() {
     name: settings?.name ?? "School",
     logoUrl: settings?.logoUrl ?? "",
     motto: settings?.motto ?? "",
+    address: settings?.address ?? "",
+    eiin: settings?.eiin ?? "",
+    establishedYear: settings?.establishedYear ?? null,
+    academicYear: settings?.academicYear ?? "",
     theme: settings?.theme,
     publicAdmission: normalizeModules(pack?.modules).publicAdmission,
   };
@@ -57,7 +64,8 @@ export async function guardianPortal(userId: string, role: string | undefined, q
       isPublished: true,
       audience: { $in: ["all", "guardians", "students", "class"] },
     })
-      .sort({ createdAt: -1 })
+      .select("title body refNo issueDate category signatories createdAt audience classId createdByName")
+      .sort({ pinned: -1, createdAt: -1 })
       .limit(20),
   ]);
   const visibleResults = results.filter((item) => {
@@ -80,7 +88,8 @@ export async function teacherPortal(userId: string) {
         .populate("classTeacherOf.classId", "name")
     : null;
   const notices = await Notice.find({ isPublished: true, audience: { $in: ["all", "teachers"] } })
-    .sort({ createdAt: -1 })
+    .select("title body refNo issueDate category signatories createdAt createdByName")
+    .sort({ pinned: -1, createdAt: -1 })
     .limit(10);
   return { teacher, notices };
 }

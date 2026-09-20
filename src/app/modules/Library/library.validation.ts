@@ -5,6 +5,7 @@ export const bookCreateValidation = z.object({
   author: z.string().optional(),
   isbn: z.string().optional(),
   copies: z.number().int().positive(),
+  collectedAt: z.string().optional().or(z.literal("")),
 });
 
 export const bookUpdateValidation = bookCreateValidation.partial();

@@ -60,7 +60,7 @@ export function createApp() {
       next();
       return;
     }
-    express.json({ limit: "2mb" })(req, res, next);
+    express.json({ limit: "15mb" })(req, res, next);
   });
   app.use(cookieParser());
   app.use(morgan(env.nodeEnv === "development" ? "dev" : "combined"));

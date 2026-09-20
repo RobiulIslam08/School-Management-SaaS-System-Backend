@@ -8,6 +8,7 @@ export interface TeacherDoc {
   designation: string;
   subjects: mongoose.Types.ObjectId[];
   classTeacherOf?: { classId: mongoose.Types.ObjectId; section: string };
+  photoUrl?: string;
   salaryStructure: {
     basic: number;
     house: number;
@@ -15,6 +16,7 @@ export interface TeacherDoc {
     other: number;
   };
   joiningDate?: Date;
+  retirementDate?: Date;
   isActive: boolean;
 }
 
@@ -24,6 +26,7 @@ const teacherSchema = new Schema<TeacherDoc>(
     name: { type: String, required: true, trim: true },
     email: { type: String, default: "", lowercase: true },
     phone: { type: String, default: "" },
+    photoUrl: { type: String, default: "" },
     designation: { type: String, default: "Teacher" },
     subjects: [{ type: Schema.Types.ObjectId, ref: "Subject" }],
     classTeacherOf: {
@@ -37,6 +40,7 @@ const teacherSchema = new Schema<TeacherDoc>(
       other: { type: Number, default: 0 },
     },
     joiningDate: { type: Date },
+    retirementDate: { type: Date },
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true }

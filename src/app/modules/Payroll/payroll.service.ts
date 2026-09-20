@@ -6,7 +6,7 @@ import { requireId } from "../../../utils/persist";
 import { computeNet } from "./payroll.utils";
 
 export async function listPayroll() {
-  return Payroll.find({ deletedAt: null }).populate("teacherId", "name staffId");
+  return Payroll.find({ deletedAt: null }).populate("teacherId", "name staffId photoUrl");
 }
 
 export async function createPayroll(input: { teacherId: string; month: string; advance?: number; deduction?: number }) {

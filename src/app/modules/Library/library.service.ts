@@ -8,8 +8,21 @@ export async function listBooks() {
   return Book.find().sort({ title: 1 });
 }
 
-export async function createBook(body: { title: string; author?: string; isbn?: string; copies: number }) {
-  return Book.create({ ...body, available: body.copies });
+export async function createBook(body: {
+  title: string;
+  author?: string;
+  isbn?: string;
+  copies: number;
+  collectedAt?: string;
+}) {
+  return Book.create({
+    title: body.title,
+    author: body.author ?? "",
+    isbn: body.isbn ?? "",
+    copies: body.copies,
+    available: body.copies,
+    collectedAt: body.collectedAt ? new Date(body.collectedAt) : new Date(),
+  });
 }
 
 export async function updateBook(id: string | undefined, body: unknown) {
@@ -25,6 +38,9 @@ export async function updateBook(id: string | undefined, body: unknown) {
   if (payload.title !== undefined) book.title = String(payload.title);
   if (payload.author !== undefined) book.author = String(payload.author);
   if (payload.isbn !== undefined) book.isbn = String(payload.isbn);
+  if (payload.collectedAt !== undefined) {
+    book.collectedAt = payload.collectedAt ? new Date(String(payload.collectedAt)) : book.collectedAt;
+  }
   if (typeof payload.copies === "number") {
     book.copies = nextCopies;
     book.available = availableAfterCopyChange(nextCopies, issued);

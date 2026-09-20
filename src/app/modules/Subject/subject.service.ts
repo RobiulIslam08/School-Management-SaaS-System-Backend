@@ -9,7 +9,7 @@ import { nextSortOrder } from "./subject.utils";
 export async function listSubjects(classId?: string) {
   return Subject.find(classId ? { classId } : {})
     .populate("classId", "name code")
-    .populate("teacherId", "name staffId")
+    .populate("teacherId", "name staffId photoUrl")
     .sort({ sortOrder: 1, name: 1 });
 }
 

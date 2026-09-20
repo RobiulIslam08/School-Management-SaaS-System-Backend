@@ -12,6 +12,8 @@ export const examCreateValidation = z.object({
 export const examUpdateValidation = z.object({
   name: z.string().min(1).optional(),
   code: z.string().min(1).optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional().nullable(),
 });
 
 export const gradingRuleValidation = z.object({

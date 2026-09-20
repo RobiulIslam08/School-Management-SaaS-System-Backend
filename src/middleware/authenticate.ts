@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { env } from "../config/env";
-import { ROLE_PERMISSIONS } from "../lib/permissions";
+import { effectivePermissions } from "../lib/permissions";
 import { User } from "../models/User";
 import { ApiError } from "../utils/ApiError";
 
@@ -21,7 +21,7 @@ export async function authenticate(req: Request, _res: Response, next: NextFunct
     req.user = {
       id: String(user._id),
       role: user.role,
-      permissions: user.permissions.length ? user.permissions : ROLE_PERMISSIONS[user.role],
+      permissions: effectivePermissions(user.role, user.permissions),
       name: user.name,
       email: user.email,
     };

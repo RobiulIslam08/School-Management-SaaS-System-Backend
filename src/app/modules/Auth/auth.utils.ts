@@ -3,7 +3,7 @@ import type { Response } from "express";
 import jwt from "jsonwebtoken";
 import { env } from "../../../config/env";
 import { clearAuthCookies, setAuthCookies, ACCESS_TOKEN_MS, REFRESH_TOKEN_MS } from "../../../lib/cookies";
-import { ROLE_PERMISSIONS, type Role } from "../../../lib/permissions";
+import { effectivePermissions, type Role } from "../../../lib/permissions";
 import { User } from "../../../models/User";
 import type { PublicUser } from "./auth.interface";
 
@@ -61,7 +61,7 @@ export function toPublicUser(user: {
     name: user.name,
     email: user.email,
     role: user.role,
-    permissions: user.permissions.length ? user.permissions : ROLE_PERMISSIONS[user.role],
+    permissions: effectivePermissions(user.role, user.permissions),
     totpEnabled: user.totpEnabled,
   };
 }

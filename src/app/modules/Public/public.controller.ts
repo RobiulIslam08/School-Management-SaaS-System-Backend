@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import { msg } from "../../../utils/messages";
 import { ok } from "../../../utils/respond";
-import { guardianPortal, publicAdmission, publicBranding, publicClasses, teacherPortal } from "./public.service";
+import { guardianPortal, listPublicNotices, publicAdmission, publicBranding, publicClasses, teacherPortal } from "./public.service";
 
 export const publicController = {
   async branding(_req: Request, res: Response): Promise<void> {
@@ -10,6 +10,10 @@ export const publicController = {
   async classes(_req: Request, res: Response): Promise<void> {
     const items = await publicClasses();
     ok(res, items, msg.loaded("Admission classes", items.length));
+  },
+  async notices(_req: Request, res: Response): Promise<void> {
+    const items = await listPublicNotices();
+    ok(res, items, msg.loaded("Notices", items.length));
   },
   async apply(req: Request, res: Response): Promise<void> {
     const created = await publicAdmission(req.body);

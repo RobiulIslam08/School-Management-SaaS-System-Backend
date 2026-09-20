@@ -1,5 +1,7 @@
 import {
+  aggregateOverall,
   gpa5FromPercent,
+  letterFromGpa,
   percentage,
   rankStudents,
   subjectResult,
@@ -51,5 +53,36 @@ describe("grading", () => {
       ["totalMarks", "cq"]
     );
     expect(ranked[0].studentId).toBe("a");
+  });
+
+  it("maps overall letter from average GPA", () => {
+    expect(letterFromGpa(5)).toBe("A+");
+    expect(letterFromGpa(4.5)).toBe("A");
+    expect(letterFromGpa(3.5)).toBe("A-");
+    expect(letterFromGpa(2.5)).toBe("C");
+    expect(letterFromGpa(0)).toBe("F");
+  });
+
+  it("aggregates overall letter from GPA average, not first subject", () => {
+    const overall = aggregateOverall([
+      { gpa: 5, letter: "A+", obtained: 80, full: 100 },
+      { gpa: 3, letter: "B", obtained: 55, full: 100 },
+    ]);
+    expect(overall.gpa).toBe(4);
+    expect(overall.letter).toBe("A");
+    expect(overall.totalObtained).toBe(135);
+  });
+
+  it("forces overall GPA 0.00 and F when any subject fails", () => {
+    const overall = aggregateOverall([
+      { gpa: 5, letter: "A+", obtained: 80, full: 100 },
+      { gpa: 0, letter: "F", obtained: 20, full: 100 },
+    ]);
+    expect(overall.gpa).toBe(0);
+    expect(overall.letter).toBe("F");
+  });
+
+  it("returns empty letter for no subjects", () => {
+    expect(aggregateOverall([])).toEqual({ gpa: 0, letter: "", totalObtained: 0, totalFull: 0 });
   });
 });

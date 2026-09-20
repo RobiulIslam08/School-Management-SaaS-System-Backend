@@ -9,6 +9,7 @@ const marks = z.object({
 
 export const subjectCreateValidation = z.object({
   name: z.string().min(1, "Subject name is required"),
+  nameBn: z.string().optional(),
   code: z.string().min(1, "Subject code is required"),
   classId: z.string().min(1),
   group: z.enum(["Science", "Business", "Humanities", "Common"]).optional(),

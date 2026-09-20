@@ -2,6 +2,7 @@ import mongoose, { Schema } from "mongoose";
 
 export interface SubjectDoc {
   name: string;
+  nameBn?: string;
   code: string;
   classId: mongoose.Types.ObjectId;
   group: "Science" | "Business" | "Humanities" | "Common";
@@ -20,6 +21,7 @@ export interface SubjectDoc {
 const subjectSchema = new Schema<SubjectDoc>(
   {
     name: { type: String, required: true, trim: true },
+    nameBn: { type: String, default: "", trim: true },
     code: { type: String, required: true, trim: true },
     classId: { type: Schema.Types.ObjectId, ref: "ClassStructure", required: true },
     group: { type: String, enum: ["Science", "Business", "Humanities", "Common"], default: "Common" },

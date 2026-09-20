@@ -21,7 +21,13 @@ export async function listLedgers(query: Record<string, unknown>) {
   const filter: Record<string, unknown> = { deletedAt: null };
   if (query.studentId) filter.studentId = query.studentId;
   if (query.status) filter.status = query.status;
-  return FeeLedger.find(filter).populate("studentId", "name studentId classId").sort({ createdAt: -1 });
+  return FeeLedger.find(filter)
+    .populate({
+      path: "studentId",
+      select: "name studentId classId",
+      populate: { path: "classId", select: "name" },
+    })
+    .sort({ createdAt: -1 });
 }
 
 export async function createLedger(body: {
@@ -32,10 +38,19 @@ export async function createLedger(body: {
   dueAmount: number;
   discount?: number;
 }) {
+  const { Student } = await import("../../../models/Student");
+  const student = await Student.findById(body.studentId).select("_id");
+  if (!student) throw new ApiError(404, msg.notFound("Student"));
+  if (body.feeStructureId) {
+    const structure = await FeeStructure.findById(body.feeStructureId).select("_id");
+    if (!structure) throw new ApiError(404, msg.notFound("Fee structure"));
+  }
+  const discount = Math.max(0, body.discount ?? 0);
   return FeeLedger.create({
     ...body,
+    discount,
     paidAmount: 0,
-    status: ledgerStatus(body.dueAmount, 0, body.discount ?? 0),
+    status: ledgerStatus(body.dueAmount, 0, discount),
   });
 }
 
@@ -43,7 +58,21 @@ export async function addPayment(ledgerId: string | undefined, payment: PaymentI
   const id = requireId(ledgerId, "Fee ledger");
   const ledger = await FeeLedger.findById(id);
   if (!ledger || ledger.deletedAt) throw new ApiError(404, msg.notFound("Fee ledger"));
-  ledger.history.push({ version: ledger.version, paidAmount: ledger.paidAmount, payments: ledger.payments, at: new Date() });
+  const remaining = Math.max(ledger.dueAmount - (ledger.discount ?? 0) - ledger.paidAmount, 0);
+  if (payment.amount > remaining) {
+    throw new ApiError(400, `Payment exceeds remaining balance (৳ ${remaining}).`);
+  }
+  const paymentsSnapshot = ledger.payments.map((p) =>
+    typeof (p as { toObject?: () => unknown }).toObject === "function"
+      ? (p as { toObject: () => unknown }).toObject()
+      : { ...p }
+  );
+  ledger.history.push({
+    version: ledger.version,
+    paidAmount: ledger.paidAmount,
+    payments: paymentsSnapshot,
+    at: new Date(),
+  });
   ledger.payments.push({
     amount: payment.amount,
     method: payment.method,

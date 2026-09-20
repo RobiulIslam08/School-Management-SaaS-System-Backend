@@ -11,6 +11,7 @@
     "build": "tsc -p tsconfig.json && tsc -p tsconfig.api.json --noEmit",
     "start": "node dist/server.js",
     "seed": "tsx src/seeds/index.ts",
+    "seed:demo": "tsx src/seeds/seed-demo.ts",
     "test": "jest --runInBand"
   },
   "dependencies": {

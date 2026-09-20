@@ -4,6 +4,7 @@ import { Result } from "../../../models/Result";
 import { Student } from "../../../models/Student";
 import { Subject } from "../../../models/Subject";
 import {
+  aggregateOverall,
   rankStudents,
   subjectResult,
   weightedFinal,
@@ -33,14 +34,21 @@ export async function publishExam(id: string | undefined, isPublished: boolean) 
   return exam;
 }
 
-export async function updateExam(id: string | undefined, body: { name?: string; code?: string }) {
+export async function updateExam(
+  id: string | undefined,
+  body: { name?: string; code?: string; startDate?: string; endDate?: string }
+) {
   const exam = await ExamType.findById(id);
   if (!exam) throw new ApiError(404, msg.notFound("Exam"));
   const name = body.name?.trim();
   const code = body.code?.trim();
-  if (!name && !code) throw new ApiError(400, msg.noFields("Exam"));
+  if (!name && !code && body.startDate === undefined && body.endDate === undefined) {
+    throw new ApiError(400, msg.noFields("Exam"));
+  }
   if (name) exam.name = name;
   if (code) exam.code = code;
+  if (body.startDate !== undefined) exam.startDate = body.startDate ? new Date(body.startDate) : undefined;
+  if (body.endDate !== undefined) exam.endDate = body.endDate ? new Date(body.endDate) : undefined;
   await exam.save();
   return exam;
 }
@@ -149,24 +157,17 @@ export async function upsertResult(
     bySubject.set(String(row.subjectId), row);
   }
   const merged = Array.from(bySubject.values());
-
-  const totalObtained = merged.reduce((sum, row) => sum + (row.obtained ?? 0), 0);
-  const totalFull = merged.reduce((sum, row) => sum + (row.full ?? 0), 0);
-  const gpa =
-    merged.length === 0
-      ? 0
-      : Math.round((merged.reduce((sum, row) => sum + (row.gpa ?? 0), 0) / merged.length) * 100) / 100;
-  const letter = merged.some((row) => row.letter === "F") ? "F" : merged[0]?.letter ?? "";
+  const overall = aggregateOverall(merged, scale);
 
   const payload = {
     studentId: input.studentId,
     examTypeId: input.examTypeId,
     academicYear: exam.academicYear,
     subjectMarks: merged,
-    totalObtained,
-    totalFull,
-    gpa,
-    letter,
+    totalObtained: overall.totalObtained,
+    totalFull: overall.totalFull,
+    gpa: overall.gpa,
+    letter: overall.letter,
   };
 
   if (existing) {
@@ -189,13 +190,26 @@ export async function upsertResult(
   return { record: created, created: true };
 }
 
-export async function recomputeMerit(examTypeId: string | undefined) {
+export async function recomputeMerit(
+  examTypeId: string | undefined,
+  scope?: { classId?: string; section?: string }
+) {
   if (!examTypeId) throw new ApiError(400, msg.updateBlocked("Merit list", "Exam id is missing."));
   const exam = await ExamType.findById(examTypeId);
   if (!exam) throw new ApiError(404, msg.notFound("Merit list"));
   const rule = await GradingRule.findOne({ academicYear: exam.academicYear, isDefault: true });
   const tieBreak = (rule?.tieBreak ?? ["totalMarks", "gpa", "cq"]) as TieBreakField[];
-  const rows = await Result.find({ examTypeId, deletedAt: null });
+
+  const filter: Record<string, unknown> = { examTypeId, deletedAt: null };
+  if (scope?.classId || scope?.section) {
+    const students = await Student.find({
+      ...(scope.classId ? { classId: scope.classId } : {}),
+      ...(scope.section ? { section: scope.section } : {}),
+    }).select("_id");
+    filter.studentId = { $in: students.map((item) => item._id) };
+  }
+
+  const rows = await Result.find(filter);
   if (!rows.length) {
     throw new ApiError(400, msg.updateBlocked("Merit list", "No saved marks were found for this exam."));
   }
@@ -228,7 +242,21 @@ export async function finalGrade(studentId: string, academicYear: string) {
   return { finalGpa: weightedFinal(parts), parts };
 }
 
-export async function exportResults(examTypeId: string | undefined) {
+export async function exportResults(
+  examTypeId: string | undefined,
+  scope?: { classId?: string; section?: string }
+) {
   if (!examTypeId) throw new ApiError(400, msg.notFoundRead("Exam"));
-  return Result.find({ examTypeId, deletedAt: null }).populate("studentId", "name studentId").sort({ meritPosition: 1 });
+  const filter: Record<string, unknown> = { examTypeId, deletedAt: null };
+  if (scope?.classId || scope?.section) {
+    const students = await Student.find({
+      ...(scope.classId ? { classId: scope.classId } : {}),
+      ...(scope.section ? { section: scope.section } : {}),
+    }).select("_id");
+    filter.studentId = { $in: students.map((item) => item._id) };
+  }
+  return Result.find(filter)
+    .populate("studentId", "name studentId rollNo section")
+    .populate("subjectMarks.subjectId", "name")
+    .sort({ meritPosition: 1 });
 }

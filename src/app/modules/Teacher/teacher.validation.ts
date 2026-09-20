@@ -6,13 +6,16 @@ export const teacherCreateValidation = z.object({
   email: z.string().email().optional().or(z.literal("")),
   phone: z.string().optional(),
   designation: z.string().optional(),
+  photoUrl: z.string().optional(),
+  joiningDate: z.string().optional(),
+  retirementDate: z.string().optional(),
   subjects: z.array(z.string()).optional(),
   salaryStructure: z
     .object({
-      basic: z.number(),
-      house: z.number(),
-      medical: z.number(),
-      other: z.number(),
+      basic: z.number().optional(),
+      house: z.number().optional(),
+      medical: z.number().optional(),
+      other: z.number().optional(),
     })
     .optional(),
 });

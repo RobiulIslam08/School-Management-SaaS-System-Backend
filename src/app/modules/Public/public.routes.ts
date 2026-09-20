@@ -10,6 +10,7 @@ const router = Router();
 
 router.get("/public/branding", asyncHandler(publicController.branding));
 router.get("/public/classes", asyncHandler(publicController.classes));
+router.get("/public/notices", asyncHandler(publicController.notices));
 router.post("/public/admissions", validate(publicAdmissionValidation), asyncHandler(publicController.apply));
 router.get(
   "/portal/guardian",

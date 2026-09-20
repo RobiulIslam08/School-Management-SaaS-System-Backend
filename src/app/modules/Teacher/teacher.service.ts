@@ -6,7 +6,7 @@ export async function listTeachers(q?: string) {
   const filter = q
     ? { $or: [{ name: new RegExp(q, "i") }, { staffId: new RegExp(q, "i") }, { phone: new RegExp(q, "i") }] }
     : {};
-  return Teacher.find(filter).populate("subjects", "name code").sort({ name: 1 });
+  return Teacher.find(filter).populate("subjects", "name nameBn code").sort({ name: 1 });
 }
 
 export async function createTeacher(body: Record<string, unknown>) {

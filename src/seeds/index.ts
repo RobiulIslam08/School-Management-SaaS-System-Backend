@@ -9,7 +9,7 @@ import { Subject } from "../models/Subject";
 import { User } from "../models/User";
 import { ensureCertificateTemplates } from "../app/modules/Certificate/certificate.service";
 import { logger } from "../utils/logger";
-import { BUSINESS, COMMON_SUBJECTS, DEFAULT_CLASSES, HUMANITIES, JUNIOR_EXTRA, SCIENCE } from "./nctb";
+import { BUSINESS, COMMON_SUBJECTS, DEFAULT_CLASSES, HUMANITIES, JUNIOR_EXTRA, MASTER_SUBJECT_CATALOG, SCIENCE } from "./nctb";
 
 const DEMO_STAFF = [
   { email: "teacher@example.com", name: "Demo Teacher", role: "teacher" as Role, password: "Teacher123456" },
@@ -117,6 +117,63 @@ export async function seedIfNeeded(): Promise<void> {
     });
     await Subject.insertMany(subjectDocs);
     logger.info("Seeded NCTB classes and subjects");
+  }
+  await ensureAllNctbSubjects();
+}
+
+export async function ensureAllNctbSubjects(): Promise<void> {
+  const classes = await ClassStructure.find().sort({ level: 1 });
+  if (!classes.length) return;
+
+  // Clean up any test dummy subject
+  await Subject.deleteMany({ name: /^hello$/i });
+
+  const defaultClass = classes.find((c) => c.level === 9 || c.level === 10) || classes[classes.length - 1];
+
+  for (const item of MASTER_SUBJECT_CATALOG) {
+    const escaped = item.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const existing = await Subject.findOne({
+      $or: [
+        { name: new RegExp(`^${escaped}$`, "i") },
+        { nameBn: item.nameBn },
+      ],
+    });
+
+    if (!existing) {
+      let targetClass = defaultClass;
+      if (item.category === "Science") {
+        targetClass = classes.find((c) => c.group === "Science") || defaultClass;
+      } else if (item.category === "Business") {
+        targetClass = classes.find((c) => c.group === "Business") || defaultClass;
+      } else if (item.category === "Humanities") {
+        targetClass = classes.find((c) => c.group === "Humanities") || defaultClass;
+      }
+
+      await Subject.create({
+        name: item.name,
+        nameBn: item.nameBn,
+        code: `${targetClass.code}-${item.code}`,
+        classId: targetClass._id,
+        group: item.group,
+        markDistribution: item.markDistribution || {
+          cq: 60,
+          mcq: 40,
+          practical: 0,
+          attendance: 0,
+        },
+        compulsory: !["Agriculture Studies", "Home Science", "Music", "Drawing", "Arabic"].includes(item.name),
+      });
+    } else {
+      await Subject.updateMany(
+        {
+          $or: [
+            { name: new RegExp(`^${escaped}$`, "i") },
+            { nameBn: item.nameBn },
+          ],
+        },
+        { $set: { nameBn: item.nameBn } }
+      );
+    }
   }
 }
 
