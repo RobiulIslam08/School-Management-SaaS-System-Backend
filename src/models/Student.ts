@@ -9,6 +9,7 @@ const addressSchema = new Schema(
     holding: { type: String, default: "" },
     block: { type: String, default: "" },
     road: { type: String, default: "" },
+    postOffice: { type: String, default: "" },
   },
   { _id: false }
 );
@@ -21,6 +22,7 @@ export interface StudentDoc {
   photoUrl: string;
   gender: "male" | "female" | "other";
   dob?: Date;
+  birthRegNo: string;
   bloodGroup: string;
   religion: string;
   phone: string;
@@ -40,14 +42,30 @@ export interface StudentDoc {
     holding: string;
     block: string;
     road: string;
+    postOffice: string;
+  };
+  permanentAddress: {
+    division: string;
+    district: string;
+    upazila: string;
+    area: string;
+    holding: string;
+    block: string;
+    road: string;
+    postOffice: string;
   };
   guardian: {
     fatherName: string;
+    fatherNameBn: string;
     motherName: string;
+    motherNameBn: string;
     guardianName: string;
+    guardianNameBn: string;
     relation: string;
     nid: string;
     phone: string;
+    fatherPhone: string;
+    motherPhone: string;
     email: string;
     occupation: string;
   };
@@ -64,6 +82,7 @@ const studentSchema = new Schema<StudentDoc>(
     photoUrl: { type: String, default: "" },
     gender: { type: String, enum: ["male", "female", "other"], required: true },
     dob: { type: Date },
+    birthRegNo: { type: String, default: "" },
     bloodGroup: { type: String, default: "" },
     religion: { type: String, default: "" },
     phone: { type: String, default: "" },
@@ -76,13 +95,19 @@ const studentSchema = new Schema<StudentDoc>(
     previousSchool: { type: String, default: "" },
     healthNotes: { type: String, default: "" },
     address: { type: addressSchema, default: () => ({}) },
+    permanentAddress: { type: addressSchema, default: () => ({}) },
     guardian: {
       fatherName: { type: String, default: "" },
+      fatherNameBn: { type: String, default: "" },
       motherName: { type: String, default: "" },
+      motherNameBn: { type: String, default: "" },
       guardianName: { type: String, default: "" },
+      guardianNameBn: { type: String, default: "" },
       relation: { type: String, default: "Father" },
       nid: { type: String, default: "" },
       phone: { type: String, default: "" },
+      fatherPhone: { type: String, default: "" },
+      motherPhone: { type: String, default: "" },
       email: { type: String, default: "" },
       occupation: { type: String, default: "" },
     },

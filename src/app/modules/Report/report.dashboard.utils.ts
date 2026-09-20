@@ -20,3 +20,26 @@ export function lastDays(count: number, from = new Date()): string[] {
     return isoDate(day);
   });
 }
+
+export type TopPerformer = {
+  id: string;
+  name: string;
+  gpa: number;
+  studentId: string;
+};
+
+/** Keep the first (highest GPA) row per student, then cap the list. */
+export function uniqueTopPerformers(
+  rows: Array<TopPerformer | null | undefined>,
+  limit = 5,
+): TopPerformer[] {
+  const seen = new Set<string>();
+  const unique: TopPerformer[] = [];
+  for (const row of rows) {
+    if (!row?.id || seen.has(row.id)) continue;
+    seen.add(row.id);
+    unique.push(row);
+    if (unique.length >= limit) break;
+  }
+  return unique;
+}

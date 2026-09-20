@@ -1,20 +1,16 @@
-import { ClassStructure } from "../../../models/ClassStructure";
 import { Student, type StudentDoc } from "../../../models/Student";
-import { SchoolSettings } from "../../../models/SchoolSettings";
 import { writeAudit } from "../../../services/audit.service";
 import type { AuthUser } from "../../../types/express";
 import { ApiError } from "../../../utils/ApiError";
 import { msg } from "../../../utils/messages";
 import { requireId, requirePayload } from "../../../utils/persist";
-import { buildStudentFilter } from "./student.utils";
+import { buildStudentFilter, nextStudentIdFromExisting } from "./student.utils";
 
-export async function nextStudentId(classId?: string): Promise<string> {
-  const settings = await SchoolSettings.findOne();
-  const year = settings?.academicYear ?? String(new Date().getFullYear());
-  const klass = classId ? await ClassStructure.findById(classId) : null;
-  const prefix = `${year}-${klass?.code ?? "GEN"}`;
-  const count = await Student.countDocuments({ studentId: new RegExp(`^${prefix}`) });
-  return `${prefix}-${String(count + 1).padStart(3, "0")}`;
+export async function nextStudentId(_classId?: string): Promise<string> {
+  const rows = await Student.find({ studentId: { $regex: /^\d+$/ } })
+    .select("studentId")
+    .lean();
+  return nextStudentIdFromExisting(rows.map((row) => row.studentId));
 }
 
 export async function listStudents(query: Record<string, unknown>) {
@@ -35,6 +31,7 @@ export async function createStudent(input: Record<string, unknown>, user?: AuthU
     throw new ApiError(409, msg.duplicate("Student", "Student ID"));
   }
   const status = (input.status as "pending" | "active" | "alumni" | "transferred") ?? "active";
+  const dobRaw = input.dob ? String(input.dob) : "";
   const payload = {
     name: String(input.name),
     gender: input.gender as "male" | "female" | "other",
@@ -49,7 +46,13 @@ export async function createStudent(input: Record<string, unknown>, user?: AuthU
     group: (input.group as "Science" | "Business" | "Humanities" | "None") ?? "None",
     previousSchool: String(input.previousSchool ?? ""),
     healthNotes: String(input.healthNotes ?? ""),
+    bloodGroup: String(input.bloodGroup ?? ""),
+    religion: String(input.religion ?? ""),
+    birthRegNo: String(input.birthRegNo ?? ""),
+    dob: dobRaw ? new Date(dobRaw) : undefined,
+    rollNo: String(input.rollNo ?? ""),
     address: (input.address as StudentDoc["address"]) ?? {},
+    permanentAddress: (input.permanentAddress as StudentDoc["permanentAddress"]) ?? {},
     guardian: (input.guardian as StudentDoc["guardian"]) ?? {},
     talentTags: (input.talentTags as string[]) ?? [],
     photoUrl: String(input.photoUrl ?? ""),

@@ -7,7 +7,7 @@ import { Result } from "../../../models/Result";
 import { Student } from "../../../models/Student";
 import { Teacher } from "../../../models/Teacher";
 import type { DashboardActivity, DashboardStats } from "./report.interface";
-import { isoDate, lastDays, monthRange, trendPct } from "./report.dashboard.utils";
+import { isoDate, lastDays, monthRange, trendPct, uniqueTopPerformers } from "./report.dashboard.utils";
 
 export async function areaReport() {
   return Student.aggregate([
@@ -144,7 +144,10 @@ export async function dashboard(): Promise<DashboardStats> {
       .sort({ startDate: 1 })
       .limit(5),
     Notice.find({ isPublished: true }).sort({ createdAt: -1 }).limit(5).select("title createdAt"),
-    Result.find({ deletedAt: null, academicYear: year }).sort({ gpa: -1 }).limit(5).populate("studentId", "name studentId"),
+    Result.find({ deletedAt: null, academicYear: year })
+      .sort({ gpa: -1 })
+      .limit(40)
+      .populate("studentId", "name studentId"),
   ]);
 
   const byDate = new Map<string, { present: number; total: number }>();
@@ -226,12 +229,12 @@ export async function dashboard(): Promise<DashboardStats> {
         href: "/notices",
       })),
     ].slice(0, 8),
-    topPerformers: topResults
-      .map((row) => {
+    topPerformers: uniqueTopPerformers(
+      topResults.map((row) => {
         const student = row.studentId as unknown as { _id?: string; name?: string; studentId?: string };
         if (!student?._id) return null;
         return { id: String(student._id), name: student.name ?? "", gpa: row.gpa, studentId: student.studentId ?? "" };
-      })
-      .filter((item): item is { id: string; name: string; gpa: number; studentId: string } => Boolean(item)),
+      }),
+    ),
   };
 }
