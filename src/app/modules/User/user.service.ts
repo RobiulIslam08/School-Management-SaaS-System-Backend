@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { ROLE_PERMISSIONS, type Role } from "../../../lib/permissions";
+import type { Role } from "../../../lib/permissions";
 import { User } from "../../../models/User";
 import { ApiError } from "../../../utils/ApiError";
 import { msg } from "../../../utils/messages";
@@ -24,7 +24,7 @@ export async function createStaff(body: {
     phone: body.phone,
     passwordHash: await bcrypt.hash(body.password, 10),
     role: body.role,
-    permissions: body.permissions ?? ROLE_PERMISSIONS[body.role],
+    permissions: body.permissions?.length ? body.permissions : [],
   });
   return { id: user._id, name: user.name, email: user.email, role: user.role };
 }
@@ -51,7 +51,7 @@ export async function updateStaff(
   if (body.role && body.role !== "platform_owner") {
     user.role = body.role;
     if (!body.permissions) {
-      user.permissions = ROLE_PERMISSIONS[body.role];
+      user.permissions = [];
     }
   }
   const { password: _pw, role: _role, ...rest } = body;

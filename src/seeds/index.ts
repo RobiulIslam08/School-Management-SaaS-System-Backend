@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import { env } from "../config/env";
 import { DEFAULT_FEATURES } from "../lib/features";
-import { ROLE_PERMISSIONS, type Role } from "../lib/permissions";
+import type { Role } from "../lib/permissions";
 import { ClassStructure } from "../models/ClassStructure";
 import { FeaturePackage, normalizeModules } from "../models/FeaturePackage";
 import { SchoolSettings } from "../models/SchoolSettings";
@@ -24,13 +24,20 @@ async function upsertUser(params: {
 }): Promise<void> {
   const email = params.email.toLowerCase();
   const existing = await User.findOne({ email });
-  if (existing) return;
+  if (existing) {
+    // Clear stale permission snapshots so live ROLE_PERMISSIONS apply
+    if (existing.permissions?.length) {
+      existing.permissions = [];
+      await existing.save();
+    }
+    return;
+  }
   await User.create({
     email,
     name: params.name,
     passwordHash: await bcrypt.hash(params.password, 10),
     role: params.role,
-    permissions: ROLE_PERMISSIONS[params.role],
+    permissions: [],
     isActive: true,
     totpEnabled: false,
   });
@@ -84,6 +91,11 @@ export async function seedIfNeeded(): Promise<void> {
   for (const staff of DEMO_STAFF) {
     await upsertUser(staff);
   }
+  // Ensure school roles use live ROLE_PERMISSIONS (clear stale snapshots)
+  await User.updateMany(
+    { role: { $in: ["school_admin", "teacher", "accountant", "guardian", "platform_owner"] } },
+    { $set: { permissions: [] } }
+  );
   logger.info("Demo users ready");
   await ensureCertificateTemplates();
 

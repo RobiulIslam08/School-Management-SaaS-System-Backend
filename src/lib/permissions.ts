@@ -56,16 +56,13 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   platform_owner: ALL_MODULES.flatMap((module) => allActions(module)),
   school_admin: ALL_MODULES.filter((module) => module !== "owner").flatMap((module) => allActions(module)),
   teacher: [
-    ...expand(
-      ["students", "academics", "attendance", "staffAttendance", "exams", "results", "notices", "talent", "certificates"],
-      ["view"]
-    ),
-    ...expand(["attendance", "staffAttendance", "exams"], ["create", "edit"]),
-    ...expand(["results"], ["create", "edit"]),
+    ...expand(["students", "academics", "exams", "notices", "talent", "certificates"], ["view"]),
+    ...expand(["attendance"], ["view", "create", "edit"]),
+    ...expand(["results"], ["view", "create", "edit", "approve"]),
   ],
   accountant: [
-    ...expand(["fees", "payroll", "expenses", "donations", "accounts", "reports", "students"], ["view"]),
-    ...expand(["fees", "payroll", "expenses", "donations"], ["create", "edit", "delete"]),
+    ...expand(["students", "accounts", "reports", "notices"], ["view"]),
+    ...expand(["fees", "payroll", "expenses", "donations"], ["view", "create", "edit", "delete"]),
     ...expand(["payroll"], ["approve"]),
   ],
   guardian: expand(["results", "fees", "notices", "attendance", "students"], ["view"]),
@@ -78,9 +75,12 @@ export function hasPermission(role: Role, permissions: string[], needed: Permiss
   return permissions.includes(`${mod}:*`);
 }
 
-/** Role defaults union custom grants so new modules aren't locked out by stale DB snapshots. */
+/**
+ * Empty custom → live role defaults.
+ * Non-empty custom → admin override only (no union with role defaults).
+ */
 export function effectivePermissions(role: Role, custom: string[] = []): string[] {
   const rolePerms = ROLE_PERMISSIONS[role] ?? [];
   if (!custom.length) return [...rolePerms];
-  return Array.from(new Set([...rolePerms, ...custom]));
+  return [...custom];
 }
