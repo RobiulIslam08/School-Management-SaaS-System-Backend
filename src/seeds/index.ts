@@ -24,14 +24,7 @@ async function upsertUser(params: {
 }): Promise<void> {
   const email = params.email.toLowerCase();
   const existing = await User.findOne({ email });
-  if (existing) {
-    // Clear stale permission snapshots so live ROLE_PERMISSIONS apply
-    if (existing.permissions?.length) {
-      existing.permissions = [];
-      await existing.save();
-    }
-    return;
-  }
+  if (existing) return;
   await User.create({
     email,
     name: params.name,
@@ -57,16 +50,38 @@ export async function seedOnce(): Promise<void> {
 }
 
 export async function seedIfNeeded(): Promise<void> {
-  const [settings, packs, classes] = await Promise.all([
+  const [settingsCount, packsCount, classesCount, adminExists] = await Promise.all([
     SchoolSettings.countDocuments(),
     FeaturePackage.countDocuments(),
     ClassStructure.countDocuments(),
+    User.exists({ email: env.adminEmail.toLowerCase() }),
   ]);
 
-  if (!settings) {
+  // Fast path on Vercel cold starts: DB already bootstrapped — skip heavy catalog work
+  if (settingsCount && packsCount && adminExists) {
+    await upsertUser({
+      email: env.ownerEmail,
+      name: "Platform Owner",
+      role: "platform_owner",
+      password: env.ownerPassword,
+    });
+    await upsertUser({
+      email: env.adminEmail,
+      name: "School Admin",
+      role: "school_admin",
+      password: env.adminPassword,
+    });
+    for (const staff of DEMO_STAFF) {
+      await upsertUser(staff);
+    }
+    logger.info("Demo users ready");
+    return;
+  }
+
+  if (!settingsCount) {
     await SchoolSettings.create({ name: "Demo High School", academicYear: "2026", eiin: "000000" });
   }
-  if (!packs) {
+  if (!packsCount) {
     await FeaturePackage.create({ modules: DEFAULT_FEATURES });
   } else {
     const pack = await FeaturePackage.findOne();
@@ -91,7 +106,6 @@ export async function seedIfNeeded(): Promise<void> {
   for (const staff of DEMO_STAFF) {
     await upsertUser(staff);
   }
-  // Ensure school roles use live ROLE_PERMISSIONS (clear stale snapshots)
   await User.updateMany(
     { role: { $in: ["school_admin", "teacher", "accountant", "guardian", "platform_owner"] } },
     { $set: { permissions: [] } }
@@ -99,7 +113,7 @@ export async function seedIfNeeded(): Promise<void> {
   logger.info("Demo users ready");
   await ensureCertificateTemplates();
 
-  if (!classes) {
+  if (!classesCount) {
     const created = await ClassStructure.insertMany(
       DEFAULT_CLASSES.map((item) => ({
         ...item,
@@ -129,8 +143,8 @@ export async function seedIfNeeded(): Promise<void> {
     });
     await Subject.insertMany(subjectDocs);
     logger.info("Seeded NCTB classes and subjects");
+    await ensureAllNctbSubjects();
   }
-  await ensureAllNctbSubjects();
 }
 
 export async function ensureAllNctbSubjects(): Promise<void> {
