@@ -2,7 +2,14 @@ import type { Request, Response } from "express";
 import { msg } from "../../../utils/messages";
 import { routeParam } from "../../../utils/persist";
 import { ok } from "../../../utils/respond";
-import { createStudent, getStudent, listStudents, promoteStudents, updateStudent } from "./student.service";
+import {
+  createStudent,
+  getStudent,
+  listStudents,
+  promoteStudents,
+  studentSaveMessage,
+  updateStudent,
+} from "./student.service";
 
 export const studentController = {
   async list(req: Request, res: Response): Promise<void> {
@@ -14,12 +21,12 @@ export const studentController = {
     ok(res, item, msg.loaded("Student"));
   },
   async create(req: Request, res: Response): Promise<void> {
-    const created = await createStudent(req.body, req.user);
-    ok(res, created, msg.saved("Student"), 201);
+    const { student, sms } = await createStudent(req.body, req.user);
+    ok(res, student, studentSaveMessage("saved", sms), 201);
   },
   async update(req: Request, res: Response): Promise<void> {
-    const updated = await updateStudent(routeParam(req.params.id), req.body, req.user);
-    ok(res, updated, msg.updated("Student"));
+    const { student, sms } = await updateStudent(routeParam(req.params.id), req.body, req.user);
+    ok(res, student, studentSaveMessage("updated", sms));
   },
   async promote(req: Request, res: Response): Promise<void> {
     const result = await promoteStudents(req.body.ids, req.body.targetClassId, req.body.targetSection, req.user);

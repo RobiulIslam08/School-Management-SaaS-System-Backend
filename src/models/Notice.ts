@@ -54,6 +54,7 @@ const smsLogSchema = new Schema(
     body: { type: String, required: true },
     status: { type: String, enum: ["queued", "sent", "failed"], default: "queued" },
     audience: { type: String, default: "" },
+    error: { type: String, default: "" },
   },
   { timestamps: true, collection: "SMSLogs" }
 );

@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import { msg } from "../../../utils/messages";
 import { ok } from "../../../utils/respond";
-import { listSms, queueSms } from "./sms.service";
+import { listSms, queueSms, smsQueueMessage } from "./sms.service";
 
 export const smsController = {
   async list(_req: Request, res: Response): Promise<void> {
@@ -10,6 +10,6 @@ export const smsController = {
   },
   async send(req: Request, res: Response): Promise<void> {
     const result = await queueSms(req.body);
-    ok(res, result, `${msg.saved("SMS queue")} Gateway is not connected yet.`);
+    ok(res, result, smsQueueMessage(result));
   },
 };

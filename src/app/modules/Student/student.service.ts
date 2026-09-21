@@ -1,4 +1,15 @@
+import { ClassStructure } from "../../../models/ClassStructure";
 import { Student, type StudentDoc } from "../../../models/Student";
+import {
+  dispatchSms,
+  emptySmsSummary,
+  getSmsSchoolName,
+  isSmsTriggerEnabled,
+  smsNote,
+  type SmsSendSummary,
+} from "../../../lib/sms/dispatch";
+import { guardianNotifyPhone } from "../../../lib/sms/phone";
+import { admissionSuccessSms } from "../../../lib/sms/templates";
 import { writeAudit } from "../../../services/audit.service";
 import type { AuthUser } from "../../../types/express";
 import { ApiError } from "../../../utils/ApiError";
@@ -22,6 +33,38 @@ export async function getStudent(id: string | undefined) {
   const item = await Student.findById(recordId).populate("classId", "name code sections group");
   if (!item) throw new ApiError(404, msg.notFoundRead("Student"));
   return item;
+}
+
+async function classNameFor(classId?: unknown): Promise<string> {
+  if (!classId) return "";
+  const row = await ClassStructure.findById(String(classId)).select("name").lean();
+  return row?.name ?? "";
+}
+
+async function sendAdmissionSms(student: StudentDoc & { _id?: unknown; classId?: unknown }): Promise<SmsSendSummary> {
+  if (student.status !== "active") return emptySmsSummary();
+  if (!(await isSmsTriggerEnabled("admission"))) return emptySmsSummary();
+
+  const to = guardianNotifyPhone(student.guardian);
+  if (!to) return { sent: 0, failed: 0, skipped: 1 };
+
+  const schoolName = await getSmsSchoolName();
+  const className = await classNameFor(student.classId);
+  const body = admissionSuccessSms({
+    schoolName,
+    studentName: student.nameBn || student.name,
+    studentId: student.studentId,
+    className: className || undefined,
+  });
+
+  return dispatchSms([
+    {
+      to,
+      body,
+      template: "admission_success",
+      audience: "guardian",
+    },
+  ]);
 }
 
 export async function createStudent(input: Record<string, unknown>, user?: AuthUser) {
@@ -59,7 +102,8 @@ export async function createStudent(input: Record<string, unknown>, user?: AuthU
   };
   const student = await Student.create(payload);
   await writeAudit({ user, action: "create", entity: "Student", entityId: String(student._id), after: student });
-  return student;
+  const sms = await sendAdmissionSms(student);
+  return { student, sms };
 }
 
 export async function updateStudent(id: string | undefined, input: unknown, user?: AuthUser) {
@@ -67,13 +111,16 @@ export async function updateStudent(id: string | undefined, input: unknown, user
   const payload = requirePayload(input, "Student");
   const before = await Student.findById(recordId);
   if (!before) throw new ApiError(404, msg.notFound("Student"));
+  const wasActive = before.status === "active";
   before.set(payload);
   if (!before.isModified()) {
     throw new ApiError(400, msg.noChanges("Student"));
   }
   await before.save();
   await writeAudit({ user, action: "update", entity: "Student", entityId: recordId, before, after: before });
-  return before;
+  const becameActive = !wasActive && before.status === "active";
+  const sms = becameActive ? await sendAdmissionSms(before) : emptySmsSummary();
+  return { student: before, sms };
 }
 
 export async function promoteStudents(
@@ -102,4 +149,9 @@ export async function promoteStudents(
     after: { ids, targetClassId, targetSection, matched: result.modifiedCount },
   });
   return result;
+}
+
+export function studentSaveMessage(action: "saved" | "updated", sms: SmsSendSummary): string {
+  const base = action === "saved" ? msg.saved("Student") : msg.updated("Student");
+  return `${base}${smsNote(sms)}`.trim();
 }

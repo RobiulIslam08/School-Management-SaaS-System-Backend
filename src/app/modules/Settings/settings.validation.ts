@@ -10,5 +10,9 @@ export const settingsUpdateValidation = z.object({
   theme: z.object({ primary: z.string().optional(), radius: z.string().optional() }).optional(),
   academicYear: z.string().optional(),
   smsApiKey: z.string().optional(),
+  smsSenderId: z.string().optional(),
+  smsAdmissionEnabled: z.boolean().optional(),
+  smsAttendanceEnabled: z.boolean().optional(),
+  smsPayrollEnabled: z.boolean().optional(),
   defaultLanguage: z.enum(["bn", "en"]).optional(),
 });

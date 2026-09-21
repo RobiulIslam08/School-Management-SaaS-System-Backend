@@ -13,6 +13,10 @@ export interface SchoolSettingsDoc {
   };
   academicYear: string;
   smsApiKey: string;
+  smsSenderId: string;
+  smsAdmissionEnabled: boolean;
+  smsAttendanceEnabled: boolean;
+  smsPayrollEnabled: boolean;
   defaultLanguage: "bn" | "en";
 }
 
@@ -30,6 +34,10 @@ const settingsSchema = new Schema<SchoolSettingsDoc>(
     },
     academicYear: { type: String, default: "2026" },
     smsApiKey: { type: String, default: "" },
+    smsSenderId: { type: String, default: "" },
+    smsAdmissionEnabled: { type: Boolean, default: true },
+    smsAttendanceEnabled: { type: Boolean, default: true },
+    smsPayrollEnabled: { type: Boolean, default: true },
     defaultLanguage: { type: String, enum: ["bn", "en"], default: "bn" },
   },
   { timestamps: true, collection: "SchoolSettings" }

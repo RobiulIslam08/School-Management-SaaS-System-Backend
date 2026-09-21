@@ -39,7 +39,8 @@ export async function publicClasses() {
 
 export async function publicAdmission(body: Record<string, unknown>) {
   await requirePublicAdmission();
-  return createStudent({ ...body, status: "pending" });
+  const { student } = await createStudent({ ...body, status: "pending" });
+  return student;
 }
 
 export async function guardianPortal(userId: string, role: string | undefined, queryStudentId?: string) {

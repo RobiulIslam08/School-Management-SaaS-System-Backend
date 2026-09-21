@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import { msg } from "../../../utils/messages";
 import { ok } from "../../../utils/respond";
-import { listAttendance, recordedDates, roster, saveAttendanceBulk } from "./attendance.service";
+import { attendanceSaveMessage, listAttendance, recordedDates, roster, saveAttendanceBulk } from "./attendance.service";
 
 export const attendanceController = {
   async list(req: Request, res: Response): Promise<void> {
@@ -10,7 +10,7 @@ export const attendanceController = {
   },
   async bulk(req: Request, res: Response): Promise<void> {
     const result = await saveAttendanceBulk({ ...req.body, markedBy: req.user?.id });
-    ok(res, { upserted: result.upsertedCount, modified: result.modifiedCount }, msg.saved("Attendance"));
+    ok(res, result, attendanceSaveMessage(result.sms));
   },
   async roster(req: Request, res: Response): Promise<void> {
     const classId = typeof req.query.classId === "string" ? req.query.classId : undefined;
