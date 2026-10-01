@@ -5,7 +5,7 @@ import { ApiError } from "../../../utils/ApiError";
 import { msg } from "../../../utils/messages";
 import { requireId } from "../../../utils/persist";
 import { ledgerStatus, aggregateFeesByClass } from "./fee.utils";
-import type { PaymentInput } from "./fee.interface";
+import type { BatchPaymentInput, BatchPaymentLine, BatchPaymentResult, PaymentInput } from "./fee.interface";
 
 export { ledgerStatus };
 
@@ -77,7 +77,9 @@ export async function addPayment(ledgerId: string | undefined, payment: PaymentI
     amount: payment.amount,
     method: payment.method,
     refNo: payment.refNo ?? "",
+    receiptNo: payment.receiptNo ?? "",
     note: payment.note ?? "",
+    particular: payment.particular ?? "",
     date: payment.date ? new Date(payment.date) : new Date(),
   });
   ledger.paidAmount += payment.amount;
@@ -86,6 +88,183 @@ export async function addPayment(ledgerId: string | undefined, payment: PaymentI
   await ledger.save();
   await writeAudit({ user, action: "payment", entity: "FeeLedger", entityId: id, after: payment });
   return ledger;
+}
+
+function receiptStamp(date?: string): { receiptNo: string; iso: string } {
+  const paidAt = date ? new Date(date) : new Date();
+  const ymd =
+    date && /^\d{4}-\d{2}-\d{2}/.test(date)
+      ? date.slice(0, 10).replace(/-/g, "")
+      : `${paidAt.getFullYear()}${String(paidAt.getMonth() + 1).padStart(2, "0")}${String(paidAt.getDate()).padStart(2, "0")}`;
+  const suffix = Math.random().toString(36).slice(2, 8).toUpperCase();
+  return { receiptNo: `FEE-${ymd}-${suffix}`, iso: paidAt.toISOString() };
+}
+
+function classLabel(value: unknown): string {
+  if (value && typeof value === "object" && "name" in value) {
+    const name = (value as { name?: unknown }).name;
+    return typeof name === "string" ? name : "";
+  }
+  return "";
+}
+
+function remainingOf(ledger: { dueAmount: number; discount?: number; paidAmount: number }): number {
+  return Math.max(ledger.dueAmount - (ledger.discount ?? 0) - ledger.paidAmount, 0);
+}
+
+function headName(title: string): string {
+  const trimmed = title.trim();
+  const match = trimmed.match(/^(.*)\s+\([^)]*\)$/);
+  return (match?.[1] ?? trimmed).trim();
+}
+
+function titleMatchesHead(title: string, head: string): boolean {
+  const value = title.trim();
+  return value === head || value.startsWith(`${head} (`) || value.startsWith(`${head}(`);
+}
+
+type LedgerDoc = InstanceType<typeof FeeLedger>;
+
+type PlannedLine = {
+  ledger: LedgerDoc | null;
+  createFor?: { studentId: string; academicYear: string; title: string };
+  title: string;
+  amount: number;
+};
+
+function pickOpenLedger(candidates: LedgerDoc[], printed: string, head: string, amount: number): LedgerDoc | null {
+  const fits = (ledger: LedgerDoc) => remainingOf(ledger) >= amount;
+  const exact = candidates.find((ledger) => ledger.title.trim() === printed && fits(ledger));
+  if (exact) return exact;
+  const bare = candidates.find((ledger) => ledger.title.trim() === head && fits(ledger));
+  if (bare) return bare;
+  return candidates.filter(fits).sort((a, b) => remainingOf(b) - remainingOf(a))[0] ?? null;
+}
+
+async function planPaymentLine(line: BatchPaymentLine, studentId: string | undefined): Promise<PlannedLine> {
+  const printed = (line.title ?? "").trim();
+  if (line.ledgerId) {
+    const ledger = await FeeLedger.findOne({ _id: line.ledgerId, deletedAt: null });
+    if (!ledger) throw new ApiError(404, msg.notFound("Fee ledger"));
+    const remaining = remainingOf(ledger);
+    if (line.amount > remaining) {
+      throw new ApiError(400, `Payment exceeds remaining balance for ${ledger.title} (৳ ${remaining}).`);
+    }
+    return { ledger, title: printed || ledger.title, amount: line.amount };
+  }
+
+  if (!studentId || !printed) {
+    throw new ApiError(400, "Student is required when a fee title has no ledger");
+  }
+  const head = headName(printed);
+  const open = await FeeLedger.find({
+    studentId,
+    deletedAt: null,
+    status: { $in: ["due", "partial"] },
+  });
+  const candidates = open.filter((ledger) => remainingOf(ledger) > 0 && titleMatchesHead(ledger.title, head));
+  const chosen = pickOpenLedger(candidates, printed, head, line.amount);
+  if (chosen) return { ledger: chosen, title: printed, amount: line.amount };
+  if (candidates.length) {
+    const largest = Math.max(...candidates.map((ledger) => remainingOf(ledger)));
+    const named = candidates.find((ledger) => remainingOf(ledger) === largest) ?? candidates[0];
+    throw new ApiError(400, `Payment exceeds remaining balance for ${named.title} (৳ ${largest}).`);
+  }
+
+  const { Student } = await import("../../../models/Student");
+  const student = await Student.findById(studentId).select("academicYear");
+  if (!student) throw new ApiError(404, msg.notFound("Student"));
+  return {
+    ledger: null,
+    createFor: {
+      studentId,
+      academicYear: student.academicYear || String(new Date().getFullYear()),
+      title: printed,
+    },
+    title: printed,
+    amount: line.amount,
+  };
+}
+
+export async function addPayments(input: BatchPaymentInput, user?: AuthUser): Promise<BatchPaymentResult> {
+  const lines = input.lines ?? [];
+  if (!lines.length) throw new ApiError(400, "At least one fee line is required");
+
+  const planned: PlannedLine[] = [];
+  for (const line of lines) {
+    planned.push(await planPaymentLine(line, input.studentId));
+  }
+
+  const knownIds = planned.flatMap((item) => (item.ledger ? [String(item.ledger._id)] : []));
+  if (new Set(knownIds).size !== knownIds.length) {
+    throw new ApiError(400, "Each fee head can be paid only once in a receipt");
+  }
+
+  const studentIds = new Set<string>();
+  if (input.studentId) studentIds.add(input.studentId);
+  for (const item of planned) {
+    if (item.ledger) studentIds.add(String(item.ledger.studentId));
+  }
+  if (studentIds.size !== 1) {
+    throw new ApiError(400, "All fee lines must belong to the same student");
+  }
+
+  const resolved = [];
+  for (const item of planned) {
+    const ledger =
+      item.ledger ??
+      (await FeeLedger.create({
+        studentId: item.createFor!.studentId,
+        academicYear: item.createFor!.academicYear,
+        title: item.createFor!.title,
+        dueAmount: item.amount,
+        discount: 0,
+        paidAmount: 0,
+        status: "due",
+      }));
+    resolved.push({ ledger, title: item.title, amount: item.amount });
+  }
+
+  const stamp = receiptStamp(input.date);
+  for (const item of resolved) {
+    await addPayment(
+      String(item.ledger._id),
+      {
+        amount: item.amount,
+        method: input.method,
+        refNo: input.refNo,
+        note: input.note,
+        date: input.date,
+        receiptNo: stamp.receiptNo,
+        particular: item.title,
+      },
+      user
+    );
+  }
+
+  const { Student } = await import("../../../models/Student");
+  const student = await Student.findById([...studentIds][0])
+    .select("name studentId classId")
+    .populate("classId", "name");
+  const years = [...new Set(resolved.map((item) => item.ledger.academicYear).filter(Boolean))];
+
+  return {
+    receiptNo: stamp.receiptNo,
+    method: input.method,
+    refNo: input.refNo ?? "",
+    date: stamp.iso,
+    academicYear: years.join(", "),
+    student: {
+      name: student?.name ?? "",
+      studentId: student?.studentId ?? "",
+      className: classLabel(student?.classId),
+    },
+    lines: resolved.map((item) => ({
+      ledgerId: String(item.ledger._id),
+      title: item.title,
+      amount: item.amount,
+    })),
+  };
 }
 
 export async function feeSummary() {

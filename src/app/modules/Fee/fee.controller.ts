@@ -4,6 +4,7 @@ import { routeParam } from "../../../utils/persist";
 import { ok } from "../../../utils/respond";
 import {
   addPayment,
+  addPayments,
   archiveLedger,
   createLedger,
   createStructure,
@@ -33,6 +34,10 @@ export const feeController = {
   async pay(req: Request, res: Response): Promise<void> {
     const ledger = await addPayment(routeParam(req.params.id), req.body, req.user);
     ok(res, ledger, msg.saved("Payment"));
+  },
+  async payBatch(req: Request, res: Response): Promise<void> {
+    const receipt = await addPayments(req.body, req.user);
+    ok(res, receipt, msg.saved("Payment"), 201);
   },
   async summary(_req: Request, res: Response): Promise<void> {
     ok(res, await feeSummary(), msg.loaded("Fee summary"));

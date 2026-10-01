@@ -5,7 +5,18 @@ import { msg } from "../../../utils/messages";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-export async function listStaffAttendance(date?: string) {
+export async function listStaffAttendance(query: { date?: string; from?: string; to?: string } = {}) {
+  const date = query.date;
+  const from = query.from;
+  const to = query.to;
+  if (from || to) {
+    if (!from || !to || !DATE_RE.test(from) || !DATE_RE.test(to) || from > to) {
+      throw new ApiError(400, "A valid date range (from and to, YYYY-MM-DD) is required");
+    }
+    return StaffAttendance.find({ date: { $gte: from, $lte: to } })
+      .populate("teacherId", "name staffId designation photoUrl")
+      .sort({ date: 1 });
+  }
   if (!date || !DATE_RE.test(date)) {
     throw new ApiError(400, "A valid date (YYYY-MM-DD) is required");
   }
@@ -58,5 +69,5 @@ export async function saveStaffAttendanceBulk(input: {
     },
   }));
   await StaffAttendance.bulkWrite(ops as never);
-  return listStaffAttendance(input.date);
+  return listStaffAttendance({ date: input.date });
 }

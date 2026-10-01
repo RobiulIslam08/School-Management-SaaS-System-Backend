@@ -12,6 +12,7 @@ import { Notice, SmsLog } from "../models/Notice";
 import { Payroll, Book, BookIssue, TransportRoute, Hostel } from "../models/Operations";
 import { IssuedCertificate, CertificateTemplate } from "../models/Certificate";
 import { seedIfNeeded } from "./index";
+import { nextStudentIdFromRoster, type ClassSerialRef } from "../app/modules/Student/student.utils";
 import { logger } from "../utils/logger";
 
 function makeSvgAvatar(name: string, bg: string, textCol: string): string {
@@ -180,12 +181,18 @@ export async function runDemoSeeder() {
     const activeClasses = classes.filter((c) => c.level >= 6 && c.level <= 10);
     const targetClasses = activeClasses.length ? activeClasses : classes;
 
-    let idCounter = 121201;
+    const classRefs: ClassSerialRef[] = classes.map((row) => ({
+      id: String(row._id),
+      code: row.code,
+      level: row.level,
+    }));
+    const assignedIds: string[] = [];
     const studentDocs = STUDENT_NAMES.map((person, idx) => {
       const cls = targetClasses[idx % targetClasses.length];
       const section = idx % 2 === 0 ? "A" : "B";
       const rollNo = String(Math.floor(idx / targetClasses.length) + 1);
-      const studentId = String(idCounter++);
+      const studentId = nextStudentIdFromRoster(classRefs, String(cls._id), "2026", assignedIds);
+      assignedIds.push(studentId);
       const palette = AVATAR_PALETTES[idx % AVATAR_PALETTES.length];
       const photoUrl = makeSvgAvatar(person.name, palette.bg, palette.text);
 

@@ -5,7 +5,7 @@ import { requireFeature } from "../../../middleware/requireFeature";
 import { validate } from "../../../middleware/validate";
 import { asyncHandler } from "../../../utils/asyncHandler";
 import { feeController } from "./fee.controller";
-import { feeLedgerValidation, feeStructureValidation, paymentValidation } from "./fee.validation";
+import { batchPaymentValidation, feeLedgerValidation, feeStructureValidation, paymentValidation } from "./fee.validation";
 
 const router = Router();
 
@@ -26,6 +26,14 @@ router.post(
   requireFeature("fees"),
   validate(feeLedgerValidation),
   asyncHandler(feeController.createLedger)
+);
+router.post(
+  "/fees/payments",
+  authenticate,
+  authorize("fees:create"),
+  requireFeature("fees"),
+  validate(batchPaymentValidation),
+  asyncHandler(feeController.payBatch)
 );
 router.post(
   "/fees/ledgers/:id/payments",

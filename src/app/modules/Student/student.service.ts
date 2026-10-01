@@ -15,13 +15,30 @@ import type { AuthUser } from "../../../types/express";
 import { ApiError } from "../../../utils/ApiError";
 import { msg } from "../../../utils/messages";
 import { requireId, requirePayload } from "../../../utils/persist";
-import { buildStudentFilter, nextStudentIdFromExisting } from "./student.utils";
+import {
+  buildStudentFilter,
+  formatStudentId,
+  nextSerialForPrefix,
+  prefixForClass,
+  type ClassSerialRef,
+} from "./student.utils";
 
-export async function nextStudentId(_classId?: string): Promise<string> {
-  const rows = await Student.find({ studentId: { $regex: /^\d+$/ } })
-    .select("studentId")
-    .lean();
-  return nextStudentIdFromExisting(rows.map((row) => row.studentId));
+export async function nextStudentId(classId?: string, academicYear?: string): Promise<string> {
+  const classes = await ClassStructure.find().select("code level").lean();
+  const refs: ClassSerialRef[] = classes.map((row) => ({
+    id: String(row._id),
+    code: row.code,
+    level: row.level,
+  }));
+  const prefix = prefixForClass(refs, classId, academicYear);
+  const rows = await Student.find({ studentId: new RegExp(`^${prefix}\\d+$`) }).select("studentId").lean();
+  return formatStudentId(
+    prefix,
+    nextSerialForPrefix(
+      rows.map((row) => row.studentId),
+      prefix
+    )
+  );
 }
 
 export async function listStudents(query: Record<string, unknown>) {
@@ -68,7 +85,10 @@ async function sendAdmissionSms(student: StudentDoc & { _id?: unknown; classId?:
 }
 
 export async function createStudent(input: Record<string, unknown>, user?: AuthUser) {
-  const studentId = String(input.studentId ?? (await nextStudentId(input.classId as string | undefined)));
+  const studentId = String(
+    input.studentId ??
+      (await nextStudentId(input.classId as string | undefined, input.academicYear as string | undefined))
+  );
   const exists = await Student.findOne({ studentId });
   if (exists) {
     throw new ApiError(409, msg.duplicate("Student", "Student ID"));

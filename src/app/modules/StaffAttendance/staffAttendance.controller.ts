@@ -10,7 +10,11 @@ import {
 
 export const staffAttendanceController = {
   async list(req: Request, res: Response): Promise<void> {
-    const items = await listStaffAttendance(typeof req.query.date === "string" ? req.query.date : undefined);
+    const items = await listStaffAttendance({
+      date: typeof req.query.date === "string" ? req.query.date : undefined,
+      from: typeof req.query.from === "string" ? req.query.from : undefined,
+      to: typeof req.query.to === "string" ? req.query.to : undefined,
+    });
     ok(res, items, msg.loaded("Staff attendance", items.length));
   },
   async roster(_req: Request, res: Response): Promise<void> {
