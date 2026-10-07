@@ -643,8 +643,8 @@ export async function listPublicExams() {
 }
 
 export async function lookupPublicResult(body: { studentId: string; examTypeId?: string }) {
-  const config = await configDoc();
-  if (config.get("resultLookupEnabled") === false) {
+  const config = await WebsiteConfig.findOne().select("resultLookupEnabled meritListEnabled").lean();
+  if (config?.resultLookupEnabled === false) {
     throw new ApiError(403, "Result lookup is not open yet.");
   }
   const student = await Student.findOne({
@@ -652,13 +652,15 @@ export async function lookupPublicResult(body: { studentId: string; examTypeId?:
     status: { $in: ["active", "alumni"] },
   })
     .select("name nameBn studentId rollNo section group academicYear classId guardian.fatherName guardian.motherName")
-    .populate("classId", "name");
+    .populate("classId", "name")
+    .lean();
   if (!student) {
     throw new ApiError(404, RESULT_MISS);
   }
   const results = await Result.find({ studentId: student._id, deletedAt: null })
     .populate("examTypeId", "name isPublished academicYear")
-    .populate("subjectMarks.subjectId", "name nameBn");
+    .populate("subjectMarks.subjectId", "name nameBn")
+    .lean();
   const published = results.filter((item) => {
     const exam = item.examTypeId as unknown as { isPublished?: boolean; _id?: unknown } | null;
     if (!exam?.isPublished) return false;
@@ -668,7 +670,7 @@ export async function lookupPublicResult(body: { studentId: string; examTypeId?:
   if (!published.length) throw new ApiError(404, RESULT_MISS);
   const klass = student.classId as unknown as { name?: string } | null;
   const guardian = student.guardian as { fatherName?: string; motherName?: string } | undefined;
-  const showMerit = config.get("meritListEnabled") === true;
+  const showMerit = config?.meritListEnabled === true;
   return published.map((item) => {
     const exam = item.examTypeId as unknown as { name?: string; academicYear?: string };
     return {

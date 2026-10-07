@@ -75,7 +75,6 @@ export async function seedIfNeeded(): Promise<void> {
     for (const staff of DEMO_STAFF) {
       await upsertUser(staff);
     }
-    await ensureWebsite();
     logger.info("Demo users ready");
     return;
   }
