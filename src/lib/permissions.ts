@@ -34,6 +34,7 @@ const ALL_MODULES = [
   "hostel",
   "idCards",
   "certificates",
+  "website",
   "users",
   "owner",
 ] as const;

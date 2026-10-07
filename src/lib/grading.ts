@@ -83,7 +83,7 @@ export function gradeForScale(p: number, scale: GradeScale): { gpa: number; lett
     return { gpa: 0, letter: `${p}%`, percent: p };
   }
   if (scale === "letter") {
-    return { gpa: 0, letter: band.letter, percent: p };
+    return { gpa: band.gpa, letter: band.letter, percent: p };
   }
   return { gpa: band.gpa, letter: band.letter, percent: p };
 }

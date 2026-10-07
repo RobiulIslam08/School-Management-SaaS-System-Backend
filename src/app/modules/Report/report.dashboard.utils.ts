@@ -4,8 +4,12 @@ export function monthRange(offset = 0, from = new Date()): { start: Date; end: D
   return { start, end };
 }
 
+/** Local calendar YYYY-MM-DD so Bangladesh midnight does not land on the previous UTC day. */
 export function isoDate(value = new Date()): string {
-  return value.toISOString().slice(0, 10);
+  const y = value.getFullYear();
+  const m = String(value.getMonth() + 1).padStart(2, "0");
+  const d = String(value.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
 }
 
 export function trendPct(current: number, previous: number): number {

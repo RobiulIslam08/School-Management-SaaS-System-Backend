@@ -97,13 +97,19 @@ export async function listResults(filterInput: {
 }) {
   const filter: Record<string, unknown> = { deletedAt: null };
   if (filterInput.examTypeId) filter.examTypeId = filterInput.examTypeId;
-  if (filterInput.studentId) filter.studentId = filterInput.studentId;
   if (filterInput.classId || filterInput.section) {
     const students = await Student.find({
       ...(filterInput.classId ? { classId: filterInput.classId } : {}),
       ...(filterInput.section ? { section: filterInput.section } : {}),
     }).select("_id");
-    filter.studentId = { $in: students.map((item) => item._id) };
+    const ids = students.map((item) => String(item._id));
+    if (filterInput.studentId) {
+      filter.studentId = ids.includes(String(filterInput.studentId)) ? filterInput.studentId : { $in: [] };
+    } else {
+      filter.studentId = { $in: ids };
+    }
+  } else if (filterInput.studentId) {
+    filter.studentId = filterInput.studentId;
   }
   const items = await Result.find(filter)
     .populate({
@@ -197,7 +203,7 @@ export async function recomputeMerit(
   if (!examTypeId) throw new ApiError(400, msg.updateBlocked("Merit list", "Exam id is missing."));
   const exam = await ExamType.findById(examTypeId);
   if (!exam) throw new ApiError(404, msg.notFound("Merit list"));
-  const rule = await GradingRule.findOne({ academicYear: exam.academicYear, isDefault: true });
+  const rule = await resolveGradingRule(exam.academicYear, scope?.classId);
   const tieBreak = (rule?.tieBreak ?? ["totalMarks", "gpa", "cq"]) as TieBreakField[];
 
   const filter: Record<string, unknown> = { examTypeId, deletedAt: null };
@@ -230,7 +236,9 @@ export async function recomputeMerit(
 }
 
 export async function finalGrade(studentId: string, academicYear: string) {
-  const rule = await GradingRule.findOne({ academicYear, isDefault: true });
+  const student = await Student.findById(studentId).select("classId");
+  const classId = student?.classId ? String(student.classId) : undefined;
+  const rule = await resolveGradingRule(academicYear, classId);
   if (!rule || !rule.weights.length) {
     throw new ApiError(400, msg.invalid("Final grade", "No default grading formula is saved for this year."));
   }

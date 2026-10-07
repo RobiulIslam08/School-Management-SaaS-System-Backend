@@ -48,7 +48,7 @@ export function createApp() {
   app.use(
     cors({
       origin: (origin, callback) => {
-        const allowed = isAllowedOrigin(origin, env.frontendOrigin);
+        const allowed = isAllowedOrigin(origin, [env.frontendOrigin, env.publicOrigin]);
         callback(null, allowed);
       },
       credentials: true,

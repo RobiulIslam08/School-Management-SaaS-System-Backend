@@ -1,6 +1,8 @@
 import type { Request, Response } from "express";
 import { msg } from "../../../utils/messages";
 import { ok } from "../../../utils/respond";
+import { routeParam } from "../../../utils/persist";
+import { getPublicNotice } from "../Notice/notice.service";
 import { guardianPortal, listPublicNotices, publicAdmission, publicBranding, publicClasses, teacherPortal } from "./public.service";
 
 export const publicController = {
@@ -14,6 +16,9 @@ export const publicController = {
   async notices(_req: Request, res: Response): Promise<void> {
     const items = await listPublicNotices();
     ok(res, items, msg.loaded("Notices", items.length));
+  },
+  async notice(req: Request, res: Response): Promise<void> {
+    ok(res, await getPublicNotice(routeParam(req.params.id)), msg.loaded("Notice"));
   },
   async apply(req: Request, res: Response): Promise<void> {
     const created = await publicAdmission(req.body);

@@ -24,6 +24,7 @@ import { studentsRouter } from "../modules/Student/student.routes";
 import { teachersRouter } from "../modules/Teacher/teacher.routes";
 import { transportRouter } from "../modules/Transport/transport.routes";
 import { usersRouter } from "../modules/User/user.routes";
+import { websiteRouter } from "../modules/Website/website.routes";
 
 export const apiRouter = Router();
 
@@ -52,3 +53,4 @@ apiRouter.use(transportRouter);
 apiRouter.use(hostelRouter);
 apiRouter.use(reportsRouter);
 apiRouter.use(publicRouter);
+apiRouter.use(websiteRouter);

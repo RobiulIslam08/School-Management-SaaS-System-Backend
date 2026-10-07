@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { Notice } from "../../../models/Notice";
 import { SchoolSettings } from "../../../models/SchoolSettings";
 import type { AuthUser } from "../../../types/express";
@@ -10,12 +11,27 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+/** Next notice number from the highest existing suffix, so a deleted notice is not reused. */
+export function nextRefFromExisting(year: string, existing: string[]): string {
+  const prefix = `NOT-${year}-`;
+  let max = 0;
+  for (const ref of existing) {
+    if (!ref.startsWith(prefix)) continue;
+    const value = Number(ref.slice(prefix.length));
+    if (Number.isInteger(value) && value > max) max = value;
+  }
+  return `${prefix}${String(max + 1).padStart(4, "0")}`;
+}
+
 async function nextRefNo(): Promise<string> {
   const settings = await SchoolSettings.findOne().select("academicYear");
   const year = settings?.academicYear ?? String(new Date().getFullYear());
   const prefix = `NOT-${escapeRegExp(year)}-`;
-  const count = await Notice.countDocuments({ refNo: new RegExp(`^${prefix}`) });
-  return `NOT-${year}-${String(count + 1).padStart(4, "0")}`;
+  const rows = await Notice.find({ refNo: new RegExp(`^${prefix}`) }).select("refNo").lean();
+  return nextRefFromExisting(
+    year,
+    rows.map((row) => row.refNo ?? "")
+  );
 }
 
 function normalizeSignatories(
@@ -116,13 +132,27 @@ export async function deleteNotice(id: string | undefined) {
   return deleteDocument(Notice, id, "Notice");
 }
 
+const publicNoticeSelect = "title body refNo issueDate category signatories pinned createdAt createdByName";
+
+export async function getPublicNotice(id: string | undefined) {
+  if (!mongoose.isValidObjectId(String(id ?? ""))) throw new ApiError(404, msg.notFoundRead("Notice"));
+  const notice = await Notice.findOne({
+    _id: id,
+    isPublished: true,
+    showOnWebsite: true,
+    audience: "all",
+  }).select(publicNoticeSelect);
+  if (!notice) throw new ApiError(404, msg.notFoundRead("Notice"));
+  return notice;
+}
+
 export async function listPublicNotices() {
   return Notice.find({
     isPublished: true,
     showOnWebsite: true,
     audience: "all",
   })
-    .select("title body refNo issueDate category signatories pinned createdAt createdByName")
+    .select(publicNoticeSelect)
     .sort({ pinned: -1, issueDate: -1, createdAt: -1 })
-    .limit(50);
+    .limit(80);
 }

@@ -1,0 +1,79 @@
+import { defaultDesks, defaultPages, defaultTasks, publicDesks, publicTasks } from "../src/app/modules/Website/website.defaults";
+import { RESULT_MISS, decodeMediaDataUrl, isAllowedImage, isEmbedUrl, sameDob, seoLengthOk } from "../src/app/modules/Website/website.guards";
+import { contrastRatio, readableOn, themeTokens } from "../src/app/modules/Website/website.theme";
+
+describe("website theme", () => {
+  it("keeps white text on the heritage green", () => {
+    const theme = themeTokens("heritage", "#ffffff");
+    expect(theme.primary).toBe("#14532d");
+    expect(theme.onPrimary).toBe("#ffffff");
+    expect(contrastRatio("#ffffff", theme.primary)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("uses ink on a pale custom colour", () => {
+    expect(readableOn("#ffff00")).toBe("#111111");
+    expect(contrastRatio("#111111", "#ffff00")).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("falls back when the custom colour is not a hex", () => {
+    expect(themeTokens("custom", "green").primary).toBe("#14532d");
+  });
+});
+
+describe("website guards", () => {
+  it("matches a date of birth on the UTC calendar day", () => {
+    expect(sameDob(new Date("2012-05-01T00:00:00.000Z"), "2012-05-01")).toBe(true);
+    expect(sameDob(new Date("2012-05-01T00:00:00.000Z"), "2012-05-02")).toBe(false);
+    expect(sameDob(undefined, "2012-05-01")).toBe(false);
+  });
+
+  it("uses one message for a missed result", () => {
+    expect(RESULT_MISS).toBe("No published result matched those details.");
+  });
+
+  it("accepts YouTube and Facebook links only", () => {
+    expect(isEmbedUrl("")).toBe(true);
+    expect(isEmbedUrl("https://www.youtube.com/watch?v=abc")).toBe(true);
+    expect(isEmbedUrl("https://youtu.be/abc")).toBe(true);
+    expect(isEmbedUrl("http://www.youtube.com/watch?v=abc")).toBe(false);
+    expect(isEmbedUrl("https://example.com/video")).toBe(false);
+  });
+
+  it("requires a 50 to 160 character SEO description", () => {
+    const ok = "Read how the school was founded, who built it, and the years that shaped the campus.";
+    expect(seoLengthOk(ok, "")).toBe(true);
+    expect(seoLengthOk("too short", "")).toBe(false);
+  });
+
+  it("keeps a site photo path and rejects a path that escapes", () => {
+    expect(isAllowedImage("/media/portrait-0.jpg")).toBe(true);
+    expect(isAllowedImage("")).toBe(true);
+    expect(isAllowedImage("../secret.jpg")).toBe(false);
+  });
+
+  it("rejects a PDF that is not a PDF", () => {
+    const fake = `data:application/pdf;base64,${Buffer.from("hello").toString("base64")}`;
+    expect(() => decodeMediaDataUrl(fake, "pdf")).toThrow(/not valid/);
+  });
+
+  it("publishes default pages with a usable SEO description", () => {
+    for (const page of defaultPages()) {
+      expect(seoLengthOk(page.seoDescriptionBn, page.seoDescriptionEn)).toBe(true);
+    }
+  });
+});
+
+describe("website copy", () => {
+  it("keeps three home tasks and eleven desks", () => {
+    expect(defaultTasks()).toHaveLength(3);
+    const desks = defaultDesks();
+    expect(desks).toHaveLength(11);
+    expect(new Set(desks.map((desk) => desk.key)).size).toBe(11);
+  });
+
+  it("falls back when stored home tasks or desks are empty", () => {
+    expect(publicTasks([])[0]?.titleBn).toBe(defaultTasks()[0]?.titleBn);
+    expect(publicDesks([{ key: "principal", noteBn: "", dutiesBn: [] }])[0]?.noteBn).toBe(defaultDesks()[0]?.noteBn);
+    expect(publicDesks([{ key: "principal", noteBn: "নিজের নোট", dutiesBn: ["এক"] }])[0]?.noteBn).toBe("নিজের নোট");
+  });
+});

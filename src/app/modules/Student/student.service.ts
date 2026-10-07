@@ -84,22 +84,19 @@ async function sendAdmissionSms(student: StudentDoc & { _id?: unknown; classId?:
   ]);
 }
 
+function isDuplicateKey(error: unknown): boolean {
+  return Boolean(error && typeof error === "object" && "code" in error && (error as { code?: number }).code === 11000);
+}
+
 export async function createStudent(input: Record<string, unknown>, user?: AuthUser) {
-  const studentId = String(
-    input.studentId ??
-      (await nextStudentId(input.classId as string | undefined, input.academicYear as string | undefined))
-  );
-  const exists = await Student.findOne({ studentId });
-  if (exists) {
-    throw new ApiError(409, msg.duplicate("Student", "Student ID"));
-  }
+  const suppliedId = input.studentId ? String(input.studentId) : "";
   const status = (input.status as "pending" | "active" | "alumni" | "transferred") ?? "active";
   const dobRaw = input.dob ? String(input.dob) : "";
   const payload = {
     name: String(input.name),
     gender: input.gender as "male" | "female" | "other",
     academicYear: String(input.academicYear),
-    studentId,
+    studentId: suppliedId,
     status,
     nameBn: String(input.nameBn ?? ""),
     phone: String(input.phone ?? ""),
@@ -120,10 +117,25 @@ export async function createStudent(input: Record<string, unknown>, user?: AuthU
     talentTags: (input.talentTags as string[]) ?? [],
     photoUrl: String(input.photoUrl ?? ""),
   };
-  const student = await Student.create(payload);
-  await writeAudit({ user, action: "create", entity: "Student", entityId: String(student._id), after: student });
-  const sms = await sendAdmissionSms(student);
-  return { student, sms };
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const studentId =
+      suppliedId ||
+      (await nextStudentId(input.classId as string | undefined, input.academicYear as string | undefined));
+    const exists = await Student.findOne({ studentId }).select("_id");
+    if (exists) {
+      if (suppliedId || attempt === 2) throw new ApiError(409, msg.duplicate("Student", "Student ID"));
+      continue;
+    }
+    try {
+      const student = await Student.create({ ...payload, studentId });
+      await writeAudit({ user, action: "create", entity: "Student", entityId: String(student._id), after: student });
+      const sms = await sendAdmissionSms(student);
+      return { student, sms };
+    } catch (error) {
+      if (suppliedId || attempt === 2 || !isDuplicateKey(error)) throw error;
+    }
+  }
+  throw new ApiError(409, msg.duplicate("Student", "Student ID"));
 }
 
 export async function updateStudent(id: string | undefined, input: unknown, user?: AuthUser) {

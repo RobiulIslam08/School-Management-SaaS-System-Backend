@@ -13,7 +13,7 @@ import { fatherNotifyPhone } from "../../../lib/sms/phone";
 import { attendanceAbsentSms } from "../../../lib/sms/templates";
 import { ApiError } from "../../../utils/ApiError";
 import { msg } from "../../../utils/messages";
-import { attendanceFilter } from "./attendance.utils";
+import { attendanceFilter, newlyAbsentStudentIds } from "./attendance.utils";
 import type { AttendanceEntry } from "./attendance.interface";
 
 export async function listAttendance(query: Record<string, unknown>) {
@@ -46,8 +46,21 @@ export async function saveAttendanceBulk(input: {
       upsert: true,
     },
   }));
+  const absentNow = input.entries.filter((entry) => entry.status === "absent").map((entry) => entry.studentId);
+  const already = absentNow.length
+    ? await Attendance.find({ date: input.date, studentId: { $in: absentNow }, status: "absent" }).select("studentId")
+    : [];
+  const freshAbsent = new Set(
+    newlyAbsentStudentIds(
+      input.entries,
+      already.map((row) => String(row.studentId))
+    )
+  );
   const result = await Attendance.bulkWrite(ops as never);
-  const sms = await sendAbsentSms(input);
+  const sms = await sendAbsentSms({
+    ...input,
+    entries: input.entries.filter((entry) => freshAbsent.has(entry.studentId)),
+  });
   return {
     upserted: result.upsertedCount ?? 0,
     modified: result.modifiedCount ?? 0,

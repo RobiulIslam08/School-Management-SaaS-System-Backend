@@ -15,4 +15,10 @@ describe("isAllowedOrigin", () => {
     );
     expect(isAllowedOrigin("https://other.vercel.app", "https://school-web.vercel.app")).toBe(false);
   });
+
+  it("allows the dashboard and the public site", () => {
+    const origins = ["https://dashboard.example", "https://school.example"];
+    expect(isAllowedOrigin("https://school.example", origins)).toBe("https://school.example");
+    expect(isAllowedOrigin("https://other.example", origins)).toBe(false);
+  });
 });

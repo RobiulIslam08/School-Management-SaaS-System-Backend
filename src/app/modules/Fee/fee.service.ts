@@ -1,10 +1,11 @@
+import mongoose, { type ClientSession } from "mongoose";
 import { FeeLedger, FeeStructure } from "../../../models/Fee";
 import { writeAudit } from "../../../services/audit.service";
 import type { AuthUser } from "../../../types/express";
 import { ApiError } from "../../../utils/ApiError";
 import { msg } from "../../../utils/messages";
 import { requireId } from "../../../utils/persist";
-import { ledgerStatus, aggregateFeesByClass } from "./fee.utils";
+import { ledgerStatus, aggregateFeesByClass, pickFeeLedger } from "./fee.utils";
 import type { BatchPaymentInput, BatchPaymentLine, BatchPaymentResult, PaymentInput } from "./fee.interface";
 
 export { ledgerStatus };
@@ -45,18 +46,30 @@ export async function createLedger(body: {
     const structure = await FeeStructure.findById(body.feeStructureId).select("_id");
     if (!structure) throw new ApiError(404, msg.notFound("Fee structure"));
   }
+  const title = body.title.trim();
+  if (!title) throw new ApiError(400, "Fee title is required");
+  if (title.toLowerCase() === "tuition") {
+    throw new ApiError(400, 'Use "Monthly Tuition Fee" for tuition dues.');
+  }
   const discount = Math.max(0, body.discount ?? 0);
   return FeeLedger.create({
     ...body,
+    title,
     discount,
     paidAmount: 0,
     status: ledgerStatus(body.dueAmount, 0, discount),
   });
 }
 
-export async function addPayment(ledgerId: string | undefined, payment: PaymentInput, user?: AuthUser) {
+export async function addPayment(
+  ledgerId: string | undefined,
+  payment: PaymentInput,
+  user?: AuthUser,
+  session?: ClientSession | null
+) {
   const id = requireId(ledgerId, "Fee ledger");
-  const ledger = await FeeLedger.findById(id);
+  const query = FeeLedger.findById(id);
+  const ledger = session ? await query.session(session) : await query;
   if (!ledger || ledger.deletedAt) throw new ApiError(404, msg.notFound("Fee ledger"));
   const remaining = Math.max(ledger.dueAmount - (ledger.discount ?? 0) - ledger.paidAmount, 0);
   if (payment.amount > remaining) {
@@ -85,7 +98,7 @@ export async function addPayment(ledgerId: string | undefined, payment: PaymentI
   ledger.paidAmount += payment.amount;
   ledger.status = ledgerStatus(ledger.dueAmount, ledger.paidAmount, ledger.discount);
   ledger.version += 1;
-  await ledger.save();
+  await ledger.save(session ? { session } : undefined);
   await writeAudit({ user, action: "payment", entity: "FeeLedger", entityId: id, after: payment });
   return ledger;
 }
@@ -112,17 +125,6 @@ function remainingOf(ledger: { dueAmount: number; discount?: number; paidAmount:
   return Math.max(ledger.dueAmount - (ledger.discount ?? 0) - ledger.paidAmount, 0);
 }
 
-function headName(title: string): string {
-  const trimmed = title.trim();
-  const match = trimmed.match(/^(.*)\s+\([^)]*\)$/);
-  return (match?.[1] ?? trimmed).trim();
-}
-
-function titleMatchesHead(title: string, head: string): boolean {
-  const value = title.trim();
-  return value === head || value.startsWith(`${head} (`) || value.startsWith(`${head}(`);
-}
-
 type LedgerDoc = InstanceType<typeof FeeLedger>;
 
 type PlannedLine = {
@@ -132,13 +134,9 @@ type PlannedLine = {
   amount: number;
 };
 
-function pickOpenLedger(candidates: LedgerDoc[], printed: string, head: string, amount: number): LedgerDoc | null {
-  const fits = (ledger: LedgerDoc) => remainingOf(ledger) >= amount;
-  const exact = candidates.find((ledger) => ledger.title.trim() === printed && fits(ledger));
-  if (exact) return exact;
-  const bare = candidates.find((ledger) => ledger.title.trim() === head && fits(ledger));
-  if (bare) return bare;
-  return candidates.filter(fits).sort((a, b) => remainingOf(b) - remainingOf(a))[0] ?? null;
+function transactionsUnsupported(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /replica set|Transaction numbers are only allowed/i.test(message);
 }
 
 async function planPaymentLine(line: BatchPaymentLine, studentId: string | undefined): Promise<PlannedLine> {
@@ -156,19 +154,16 @@ async function planPaymentLine(line: BatchPaymentLine, studentId: string | undef
   if (!studentId || !printed) {
     throw new ApiError(400, "Student is required when a fee title has no ledger");
   }
-  const head = headName(printed);
   const open = await FeeLedger.find({
     studentId,
     deletedAt: null,
     status: { $in: ["due", "partial"] },
   });
-  const candidates = open.filter((ledger) => remainingOf(ledger) > 0 && titleMatchesHead(ledger.title, head));
-  const chosen = pickOpenLedger(candidates, printed, head, line.amount);
-  if (chosen) return { ledger: chosen, title: printed, amount: line.amount };
-  if (candidates.length) {
-    const largest = Math.max(...candidates.map((ledger) => remainingOf(ledger)));
-    const named = candidates.find((ledger) => remainingOf(ledger) === largest) ?? candidates[0];
-    throw new ApiError(400, `Payment exceeds remaining balance for ${named.title} (৳ ${largest}).`);
+  const chosen = pickFeeLedger(open, printed, line.amount, remainingOf);
+  if (chosen?.kind === "pay") return { ledger: chosen.ledger, title: printed, amount: line.amount };
+  if (chosen?.kind === "over") {
+    const left = remainingOf(chosen.ledger);
+    throw new ApiError(400, `Payment exceeds remaining balance for ${chosen.ledger.title} (৳ ${left}).`);
   }
 
   const { Student } = await import("../../../models/Student");
@@ -184,6 +179,50 @@ async function planPaymentLine(line: BatchPaymentLine, studentId: string | undef
     title: printed,
     amount: line.amount,
   };
+}
+
+async function writePlannedPayments(
+  planned: PlannedLine[],
+  input: BatchPaymentInput,
+  user: AuthUser | undefined,
+  session: ClientSession | null
+) {
+  const resolved: Array<{ ledger: LedgerDoc; title: string; amount: number }> = [];
+  for (const item of planned) {
+    let ledger = item.ledger;
+    if (!ledger) {
+      const doc = {
+        studentId: item.createFor!.studentId,
+        academicYear: item.createFor!.academicYear,
+        title: item.createFor!.title,
+        dueAmount: item.amount,
+        discount: 0,
+        paidAmount: 0,
+        status: "due" as const,
+      };
+      ledger = session ? (await FeeLedger.create([doc], { session }))[0] : await FeeLedger.create(doc);
+    }
+    resolved.push({ ledger, title: item.title, amount: item.amount });
+  }
+
+  const stamp = receiptStamp(input.date);
+  for (const item of resolved) {
+    await addPayment(
+      String(item.ledger._id),
+      {
+        amount: item.amount,
+        method: input.method,
+        refNo: input.refNo,
+        note: input.note,
+        date: input.date,
+        receiptNo: stamp.receiptNo,
+        particular: item.title,
+      },
+      user,
+      session
+    );
+  }
+  return { resolved, stamp };
 }
 
 export async function addPayments(input: BatchPaymentInput, user?: AuthUser): Promise<BatchPaymentResult> {
@@ -209,38 +248,21 @@ export async function addPayments(input: BatchPaymentInput, user?: AuthUser): Pr
     throw new ApiError(400, "All fee lines must belong to the same student");
   }
 
-  const resolved = [];
-  for (const item of planned) {
-    const ledger =
-      item.ledger ??
-      (await FeeLedger.create({
-        studentId: item.createFor!.studentId,
-        academicYear: item.createFor!.academicYear,
-        title: item.createFor!.title,
-        dueAmount: item.amount,
-        discount: 0,
-        paidAmount: 0,
-        status: "due",
-      }));
-    resolved.push({ ledger, title: item.title, amount: item.amount });
+  const session = await mongoose.startSession();
+  let written: Awaited<ReturnType<typeof writePlannedPayments>> | undefined;
+  try {
+    try {
+      await session.withTransaction(async () => {
+        written = await writePlannedPayments(planned, input, user, session);
+      });
+    } catch (error) {
+      if (!transactionsUnsupported(error)) throw error;
+      written = await writePlannedPayments(planned, input, user, null);
+    }
+  } finally {
+    await session.endSession();
   }
-
-  const stamp = receiptStamp(input.date);
-  for (const item of resolved) {
-    await addPayment(
-      String(item.ledger._id),
-      {
-        amount: item.amount,
-        method: input.method,
-        refNo: input.refNo,
-        note: input.note,
-        date: input.date,
-        receiptNo: stamp.receiptNo,
-        particular: item.title,
-      },
-      user
-    );
-  }
+  const { resolved, stamp } = written!;
 
   const { Student } = await import("../../../models/Student");
   const student = await Student.findById([...studentIds][0])

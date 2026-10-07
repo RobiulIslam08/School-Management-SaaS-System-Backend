@@ -1,4 +1,4 @@
-import { aggregateFeesByClass, ledgerStatus } from "../src/app/modules/Fee/fee.utils";
+import { aggregateFeesByClass, ledgerStatus, pickFeeLedger } from "../src/app/modules/Fee/fee.utils";
 
 describe("fee ledger status", () => {
   it("marks paid when collection covers the due after discount", () => {
@@ -45,6 +45,35 @@ describe("aggregateFeesByClass", () => {
   it("groups ledgers without a class under a placeholder row", () => {
     const rows = aggregateFeesByClass([{ dueAmount: 100, paidAmount: 40, studentId: { _id: "s9" } }]);
     expect(rows).toEqual([{ classId: "none", name: "—", due: 60, collected: 40, studentCount: 1 }]);
+  });
+});
+
+describe("pickFeeLedger", () => {
+  const remaining = (row: { due: number }) => row.due;
+  const open = [
+    { title: "Monthly Tuition Fee (Aug26)", due: 500 },
+    { title: "Monthly Tuition Fee", due: 300 },
+    { title: "Library Fee (Sep26)", due: 100 },
+  ];
+
+  it("pays the same month and leaves a different month alone", () => {
+    const chosen = pickFeeLedger(open, "Monthly Tuition Fee (Aug26)", 200, remaining);
+    expect(chosen).toEqual({ kind: "pay", ledger: open[0] });
+  });
+
+  it("pays a bare head when that month has no ledger", () => {
+    const chosen = pickFeeLedger(open, "Monthly Tuition Fee (Sep26)", 200, remaining);
+    expect(chosen).toEqual({ kind: "pay", ledger: open[1] });
+  });
+
+  it("does not take another month when no bare ledger exists", () => {
+    const chosen = pickFeeLedger(open, "Library Fee (Oct26)", 50, remaining);
+    expect(chosen).toBeNull();
+  });
+
+  it("blocks a payment larger than the matching ledger", () => {
+    const chosen = pickFeeLedger(open, "Library Fee (Sep26)", 150, remaining);
+    expect(chosen).toEqual({ kind: "over", ledger: open[2] });
   });
 });
 

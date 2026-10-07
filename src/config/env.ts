@@ -51,6 +51,7 @@ export const env = {
     mongoUri: process.env.MONGODB_URI ?? "",
   }),
   frontendOrigin: process.env.FRONTEND_ORIGIN ?? (isProduction ? "" : "http://localhost:3000"),
+  publicOrigin: process.env.PUBLIC_ORIGIN ?? (isProduction ? "" : "http://localhost:3001"),
   cookieSecure: process.env.COOKIE_SECURE === "true" || isProduction,
   cookieSameSite: cookieSameSite as "lax" | "none" | "strict",
   ownerEmail: process.env.OWNER_EMAIL ?? "owner@example.com",

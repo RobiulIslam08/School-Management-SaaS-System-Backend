@@ -7,6 +7,43 @@ export function ledgerStatus(dueAmount: number, paidAmount: number, discount: nu
   return "due";
 }
 
+/** "Library Fee (Sep26)" → "Library Fee". A bare title stays as-is. */
+export function feeHeadName(title: string): string {
+  const trimmed = title.trim();
+  const match = trimmed.match(/^(.*)\s+\([^)]*\)$/);
+  return (match?.[1] ?? trimmed).trim();
+}
+
+export function feeTitleMatchesHead(title: string, head: string): boolean {
+  const value = title.trim();
+  return value === head || value.startsWith(`${head} (`) || value.startsWith(`${head}(`);
+}
+
+export type FeeLedgerPick<T> = { kind: "pay"; ledger: T } | { kind: "over"; ledger: T };
+
+/**
+ * A month-specific payment matches that exact title, or a bare ledger of the same head.
+ * It does not take a different month's open ledger.
+ */
+export function pickFeeLedger<T extends { title: string }>(
+  open: T[],
+  printed: string,
+  amount: number,
+  remainingOf: (row: T) => number
+): FeeLedgerPick<T> | null {
+  const head = feeHeadName(printed);
+  const target = printed.trim();
+  const withBalance = open.filter((row) => remainingOf(row) > 0 && feeTitleMatchesHead(row.title, head));
+  const exact = withBalance.filter((row) => row.title.trim() === target);
+  const bare = target === head ? [] : withBalance.filter((row) => row.title.trim() === head);
+  const matches = exact.length ? exact : bare;
+  if (!matches.length) return null;
+  const fits = matches.filter((row) => remainingOf(row) >= amount);
+  if (fits.length) return { kind: "pay", ledger: fits[0] };
+  const blocked = [...matches].sort((a, b) => remainingOf(b) - remainingOf(a))[0];
+  return { kind: "over", ledger: blocked };
+}
+
 export type ClassFeeRow = {
   classId: string;
   name: string;

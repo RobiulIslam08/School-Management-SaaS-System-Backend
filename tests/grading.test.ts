@@ -85,4 +85,21 @@ describe("grading", () => {
   it("returns empty letter for no subjects", () => {
     expect(aggregateOverall([])).toEqual({ gpa: 0, letter: "", totalObtained: 0, totalFull: 0 });
   });
+
+  it("keeps GPA points on the letter scale so the overall grade is not forced to F", () => {
+    const caps = { cq: 100, mcq: 0, practical: 0, attendance: 0 };
+    const high = subjectResult({ cq: 80, mcq: 0, practical: 0, attendance: 0 }, caps, "letter");
+    const mid = subjectResult({ cq: 55, mcq: 0, practical: 0, attendance: 0 }, caps, "letter");
+    expect(high.gpa).toBe(5);
+    expect(high.letter).toBe("A+");
+    const overall = aggregateOverall(
+      [
+        { gpa: high.gpa, letter: high.letter, obtained: high.obtained, full: high.full },
+        { gpa: mid.gpa, letter: mid.letter, obtained: mid.obtained, full: mid.full },
+      ],
+      "letter"
+    );
+    expect(overall.gpa).toBeGreaterThan(0);
+    expect(overall.letter).not.toBe("F");
+  });
 });

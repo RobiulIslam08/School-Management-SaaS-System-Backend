@@ -14,7 +14,7 @@ export const feeLedgerValidation = z.object({
   studentId: z.string(),
   feeStructureId: z.string().optional(),
   academicYear: z.string(),
-  title: z.string(),
+  title: z.string().trim().min(1, "Fee title is required"),
   dueAmount: z.number().positive(),
   discount: z.number().nonnegative().optional(),
 });

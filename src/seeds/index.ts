@@ -8,6 +8,7 @@ import { SchoolSettings } from "../models/SchoolSettings";
 import { Subject } from "../models/Subject";
 import { User } from "../models/User";
 import { ensureCertificateTemplates } from "../app/modules/Certificate/certificate.service";
+import { ensureWebsite } from "../app/modules/Website/website.service";
 import { logger } from "../utils/logger";
 import { BUSINESS, COMMON_SUBJECTS, DEFAULT_CLASSES, HUMANITIES, JUNIOR_EXTRA, MASTER_SUBJECT_CATALOG, SCIENCE } from "./nctb";
 
@@ -74,6 +75,7 @@ export async function seedIfNeeded(): Promise<void> {
     for (const staff of DEMO_STAFF) {
       await upsertUser(staff);
     }
+    await ensureWebsite();
     logger.info("Demo users ready");
     return;
   }
@@ -145,6 +147,7 @@ export async function seedIfNeeded(): Promise<void> {
     logger.info("Seeded NCTB classes and subjects");
     await ensureAllNctbSubjects();
   }
+  await ensureWebsite();
 }
 
 export async function ensureAllNctbSubjects(): Promise<void> {
