@@ -16,6 +16,28 @@ export interface MenuItem {
   children: MenuChild[];
 }
 
+export const receiptsMenuChild: MenuChild = {
+  key: "receipts",
+  href: "/receipts",
+  labelBn: "জমার রসিদ",
+  labelEn: "Payment receipts",
+  visible: true,
+};
+
+/** Puts the receipts link after results when a saved menu does not have it yet. A hidden link stays hidden. */
+export function ensureReceiptsMenu(menus: MenuItem[]): MenuItem[] {
+  return menus.map((item) => {
+    if (item.key !== "academic") return item;
+    const children = item.children ?? [];
+    if (children.some((child) => child.key === "receipts")) return item;
+    const resultsAt = children.findIndex((child) => child.key === "results");
+    const insertAt = resultsAt === -1 ? children.length : resultsAt + 1;
+    const next = children.slice();
+    next.splice(insertAt, 0, { ...receiptsMenuChild });
+    return { ...item, children: next };
+  });
+}
+
 export function defaultMenus(): MenuItem[] {
   return [
     { key: "home", href: "/", labelBn: "হোম", labelEn: "Home", visible: true, locked: true, children: [] },
@@ -62,6 +84,7 @@ export function defaultMenus(): MenuItem[] {
         { key: "syllabus", href: "/academic/syllabus", labelBn: "সিলেবাস", labelEn: "Syllabus", visible: true },
         { key: "calendar", href: "/academic/calendar", labelBn: "একাডেমিক ক্যালেন্ডার", labelEn: "Academic calendar", visible: true },
         { key: "results", href: "/results", labelBn: "ফলাফল ও মার্কশিট", labelEn: "Results and marksheet", visible: true },
+        { ...receiptsMenuChild },
         { key: "cocurricular", href: "/academic/cocurricular", labelBn: "সহশিক্ষা", labelEn: "Co-curricular", visible: true },
       ],
     },
@@ -643,6 +666,7 @@ export function defaultConfig() {
     ...defaultAdmit(),
     desks: defaultDesks(),
     resultLookupEnabled: true,
+    receiptLookupEnabled: true,
     meritListEnabled: false,
     seoDescriptionBn: "স্কুলের নোটিশ, ভর্তি, শিক্ষক, রুটিন ও প্রকাশিত ফলাফল দেখুন।",
     seoDescriptionEn: "Notices, admission, teachers, routines, and published results for this school.",

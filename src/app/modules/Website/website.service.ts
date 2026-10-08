@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { ClassStructure } from "../../../models/ClassStructure";
 import { FeaturePackage, normalizeModules } from "../../../models/FeaturePackage";
 import { ExamType } from "../../../models/ExamType";
+import { FeeLedger } from "../../../models/Fee";
 import { Result } from "../../../models/Result";
 import { Routine } from "../../../models/Routine";
 import { SchoolSettings } from "../../../models/SchoolSettings";
@@ -22,10 +23,11 @@ import { ApiError } from "../../../utils/ApiError";
 import { msg } from "../../../utils/messages";
 import { requireId, routeParam } from "../../../utils/persist";
 import { listPublicNotices } from "../Notice/notice.service";
-import { defaultAdmit, defaultConfig, defaultPages, defaultPosts, publicDesks, publicTasks, type MenuItem } from "./website.defaults";
+import { defaultAdmit, defaultConfig, defaultPages, defaultPosts, ensureReceiptsMenu, publicDesks, publicTasks, type MenuItem } from "./website.defaults";
 import { ensureNoticeBoard } from "../Notice/notice.board";
 import { ensureWebsiteShowcase } from "./website.showcase";
 import { RESULT_MISS, decodeMediaDataUrl, isAllowedImage, isEmbedUrl, seoLengthOk } from "./website.guards";
+import { RECEIPT_MISS, groupPublicReceipts, type ReceiptSource } from "./website.receipts";
 import { themeTokens } from "./website.theme";
 
 type PageInput = {
@@ -173,7 +175,7 @@ function cleanMap(value: string | undefined): string {
 function lockMenus(menus: MenuItem[] | undefined): MenuItem[] {
   const source = menus?.length ? menus : defaultConfig().menus;
   const locked = new Set(["home", "contact", "login"]);
-  return source.map((item) => (locked.has(item.key) ? { ...item, visible: true, locked: true } : item));
+  return ensureReceiptsMenu(source.map((item) => (locked.has(item.key) ? { ...item, visible: true, locked: true } : item)));
 }
 
 function publicConfig(doc: Record<string, unknown>) {
@@ -221,6 +223,7 @@ function publicConfig(doc: Record<string, unknown>) {
     admitBodyEn: doc.admitBodyEn || admit.admitBodyEn,
     desks: publicDesks(doc.desks),
     resultLookupEnabled: doc.resultLookupEnabled !== false,
+    receiptLookupEnabled: doc.receiptLookupEnabled !== false,
     meritListEnabled: doc.meritListEnabled === true,
     seoDescriptionBn: doc.seoDescriptionBn ?? "",
     seoDescriptionEn: doc.seoDescriptionEn ?? "",
@@ -247,7 +250,10 @@ export async function getAdminBundle() {
     WebsiteFile.find().select("-data").sort({ createdAt: -1 }).lean(),
     WebsiteInquiry.find().sort({ createdAt: -1 }).limit(100).lean(),
   ]);
-  return { config, pages, posts, albums, media, people, files, inquiries };
+  const configOut = config
+    ? { ...config, menus: lockMenus((config as { menus?: MenuItem[] }).menus) }
+    : config;
+  return { config: configOut, pages, posts, albums, media, people, files, inquiries };
 }
 
 export async function saveConfig(body: Record<string, unknown>) {
@@ -556,10 +562,21 @@ export async function getPublicSite() {
       establishedYear: settings?.establishedYear ?? null,
       academicYear: settings?.academicYear ?? "",
     },
-    config: {
-      ...publicConfig((config ?? {}) as Record<string, unknown>),
-      publicAdmission: normalizeModules(pack?.modules).publicAdmission,
-    },
+    config: (() => {
+      const modules = normalizeModules(pack?.modules);
+      const pub = publicConfig((config ?? {}) as Record<string, unknown>);
+      const menus = modules.fees
+        ? pub.menus
+        : pub.menus.map((item) =>
+            item.key === "academic" ? { ...item, children: item.children.filter((child) => child.key !== "receipts") } : item
+          );
+      return {
+        ...pub,
+        menus,
+        publicAdmission: modules.publicAdmission,
+        receiptLookupEnabled: pub.receiptLookupEnabled && modules.fees,
+      };
+    })(),
     notices: notices.slice(0, 8),
     posts,
     teachers,
@@ -710,6 +727,58 @@ export async function lookupPublicResult(body: { studentId: string; examTypeId?:
       }),
     };
   });
+}
+
+export async function lookupPublicReceipts(body: { studentId: string }) {
+  const pack = await FeaturePackage.findOne().select("modules").lean();
+  if (!normalizeModules(pack?.modules).fees) {
+    throw new ApiError(403, "Receipt lookup is not open yet.");
+  }
+  const config = await WebsiteConfig.findOne().select("receiptLookupEnabled").lean();
+  if (config?.receiptLookupEnabled === false) {
+    throw new ApiError(403, "Receipt lookup is not open yet.");
+  }
+  const student = await Student.findOne({
+    studentId: body.studentId.trim(),
+    status: { $in: ["active", "alumni"] },
+  })
+    .select("name nameBn studentId classId")
+    .populate("classId", "name")
+    .lean();
+  if (!student) throw new ApiError(404, RECEIPT_MISS);
+
+  const ledgers = await FeeLedger.find({ studentId: student._id, deletedAt: null })
+    .select("academicYear title payments.amount payments.method payments.refNo payments.receiptNo payments.date payments.particular")
+    .lean();
+
+  const sources: ReceiptSource[] = ledgers.flatMap((ledger) => {
+    const payments = Array.isArray(ledger.payments) ? ledger.payments : [];
+    return payments.map((payment) => ({
+      ledgerId: String(ledger._id),
+      academicYear: String(ledger.academicYear ?? ""),
+      ledgerTitle: String(ledger.title ?? ""),
+      paymentId: payment._id ? String(payment._id) : "",
+      amount: Number(payment.amount ?? 0),
+      method: String(payment.method ?? ""),
+      refNo: String(payment.refNo ?? ""),
+      receiptNo: String(payment.receiptNo ?? ""),
+      date: payment.date ?? null,
+      particular: String(payment.particular ?? ""),
+    }));
+  });
+  const receipts = groupPublicReceipts(sources);
+  if (!receipts.length) throw new ApiError(404, RECEIPT_MISS);
+
+  const klass = student.classId as unknown as { name?: string } | null;
+  return {
+    student: {
+      name: student.name,
+      nameBn: student.nameBn ?? "",
+      studentId: student.studentId,
+      className: klass?.name ?? "",
+    },
+    receipts,
+  };
 }
 
 export async function publicMerit(examTypeId?: string, classId?: string) {

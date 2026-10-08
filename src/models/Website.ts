@@ -104,6 +104,7 @@ const configSchema = new Schema(
       default: [],
     },
     resultLookupEnabled: { type: Boolean, default: true },
+    receiptLookupEnabled: { type: Boolean, default: true },
     meritListEnabled: { type: Boolean, default: false },
     seoDescriptionBn: { type: String, default: "" },
     seoDescriptionEn: { type: String, default: "" },

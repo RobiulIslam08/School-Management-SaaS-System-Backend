@@ -6,6 +6,7 @@ import { validate } from "../../../middleware/validate";
 import { asyncHandler } from "../../../utils/asyncHandler";
 import { websiteController } from "./website.controller";
 import {
+  receiptLookupValidation,
   resultLookupValidation,
   websiteAlbumValidation,
   websiteConfigValidation,
@@ -20,6 +21,7 @@ import {
 } from "./website.validation";
 
 const lookupLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: true });
+const receiptLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: true });
 const inquiryLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: true });
 
 const router = Router();
@@ -35,6 +37,7 @@ router.get("/public/website/exams", asyncHandler(websiteController.exams));
 router.get("/public/website/merit", asyncHandler(websiteController.merit));
 router.get("/public/website/files/:id", asyncHandler(websiteController.download));
 router.post("/public/website/results", lookupLimiter, validate(resultLookupValidation), asyncHandler(websiteController.lookup));
+router.post("/public/website/receipts", receiptLimiter, validate(receiptLookupValidation), asyncHandler(websiteController.receipts));
 router.post("/public/website/inquiries", inquiryLimiter, validate(websiteInquiryValidation), asyncHandler(websiteController.inquiry));
 
 router.get("/website", authenticate, authorize("website:view"), asyncHandler(websiteController.admin));

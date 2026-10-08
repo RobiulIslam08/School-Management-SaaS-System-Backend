@@ -23,6 +23,7 @@ import {
   getPublicRoutine,
   getPublicSite,
   listPublicExams,
+  lookupPublicReceipts,
   lookupPublicResult,
   markInquiry,
   publicFile,
@@ -132,6 +133,10 @@ export const websiteController = {
   async lookup(req: Request, res: Response): Promise<void> {
     const rows = await lookupPublicResult(req.body);
     ok(res, rows, msg.loaded("Result", rows.length));
+  },
+  async receipts(req: Request, res: Response): Promise<void> {
+    const data = await lookupPublicReceipts(req.body);
+    ok(res, data, msg.loaded("Receipt", data.receipts.length));
   },
   async merit(req: Request, res: Response): Promise<void> {
     const examTypeId = typeof req.query.examTypeId === "string" ? req.query.examTypeId : undefined;

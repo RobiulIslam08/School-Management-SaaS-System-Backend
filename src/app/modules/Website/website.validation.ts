@@ -98,6 +98,7 @@ export const websiteConfigValidation = z.object({
     .max(12)
     .optional(),
   resultLookupEnabled: z.boolean().optional(),
+  receiptLookupEnabled: z.boolean().optional(),
   meritListEnabled: z.boolean().optional(),
   seoDescriptionBn: text(160),
   seoDescriptionEn: text(160),
@@ -202,4 +203,8 @@ export const syllabusOutlineValidation = z.object({
 export const resultLookupValidation = z.object({
   studentId: z.string().min(2).max(40),
   examTypeId: z.string().optional(),
+});
+
+export const receiptLookupValidation = z.object({
+  studentId: z.string().min(2).max(40),
 });
