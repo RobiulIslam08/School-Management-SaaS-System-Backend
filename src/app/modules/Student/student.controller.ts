@@ -6,6 +6,7 @@ import {
   createStudent,
   getStudent,
   listStudents,
+  promoteAllStudents,
   promoteStudents,
   studentSaveMessage,
   updateStudent,
@@ -31,5 +32,14 @@ export const studentController = {
   async promote(req: Request, res: Response): Promise<void> {
     const result = await promoteStudents(req.body.ids, req.body.targetClassId, req.body.targetSection, req.user);
     ok(res, result, msg.updated("Student promotion"));
+  },
+  async promoteAll(req: Request, res: Response): Promise<void> {
+    const result = await promoteAllStudents(req.user);
+    const year = result.yearAdvanced ? ` Academic year is ${result.academicYear}.` : "";
+    ok(
+      res,
+      result,
+      `Promoted ${result.promoted} students. ${result.alumni} became alumni. ${result.skipped} stayed in place.${year}`
+    );
   },
 };

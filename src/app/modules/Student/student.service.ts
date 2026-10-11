@@ -1,4 +1,6 @@
+import type { AnyBulkWriteOperation } from "mongoose";
 import { ClassStructure } from "../../../models/ClassStructure";
+import { SchoolSettings } from "../../../models/SchoolSettings";
 import { Student, type StudentDoc } from "../../../models/Student";
 import {
   dispatchSms,
@@ -15,6 +17,8 @@ import type { AuthUser } from "../../../types/express";
 import { ApiError } from "../../../utils/ApiError";
 import { msg } from "../../../utils/messages";
 import { requireId, requirePayload } from "../../../utils/persist";
+import { sectionNames } from "../Class/class.utils";
+import { nextAcademicYear, planPromotion, type PromoteClass, type PromoteStudent } from "./student.promote";
 import {
   buildStudentFilter,
   formatStudentId,
@@ -181,6 +185,81 @@ export async function promoteStudents(
     after: { ids, targetClassId, targetSection, matched: result.modifiedCount },
   });
   return result;
+}
+
+export async function promoteAllStudents(user?: AuthUser) {
+  const [classRows, studentRows, settings] = await Promise.all([
+    ClassStructure.find().select("level group sections isActive").lean(),
+    Student.find({ status: "active" }).select("classId section group").lean(),
+    SchoolSettings.findOne(),
+  ]);
+  if (!studentRows.length) {
+    throw new ApiError(400, msg.updateBlocked("Student promotion", "There are no active students."));
+  }
+
+  const classes: PromoteClass[] = classRows.map((row) => ({
+    id: String(row._id),
+    level: Number(row.level),
+    group: String(row.group ?? "None"),
+    sections: sectionNames(row.sections),
+    active: row.isActive !== false,
+  }));
+  const students: PromoteStudent[] = studentRows.map((row) => ({
+    id: String(row._id),
+    classId: row.classId ? String(row.classId) : "",
+    section: String(row.section ?? ""),
+    group: String(row.group ?? "None"),
+  }));
+  const decisions = planPromotion(students, classes);
+  const moves = decisions.filter((item) => item.kind === "move");
+  const alumni = decisions.filter((item) => item.kind === "alumni");
+  const skipped = decisions.filter((item) => item.kind === "skip");
+  const nextYear = moves.length || alumni.length ? nextAcademicYear(settings?.academicYear) : null;
+
+  const ops = [
+    ...moves.map((item) => ({
+      updateOne: {
+        filter: { _id: item.studentId, status: "active" },
+        update: {
+          $set: {
+            classId: item.classId,
+            section: item.section,
+            group: item.group,
+            ...(nextYear ? { academicYear: nextYear } : {}),
+          },
+        },
+      },
+    })),
+    ...alumni.map((item) => ({
+      updateOne: {
+        filter: { _id: item.studentId, status: "active" },
+        update: { $set: { status: "alumni" as const } },
+      },
+    })),
+  ];
+  if (ops.length) await Student.bulkWrite(ops as AnyBulkWriteOperation<StudentDoc>[]);
+
+  let academicYear = settings?.academicYear ?? "";
+  if (nextYear && settings) {
+    settings.academicYear = nextYear;
+    await settings.save();
+    academicYear = nextYear;
+  }
+
+  await writeAudit({
+    user,
+    action: "promote",
+    entity: "Student",
+    after: { promoted: moves.length, alumni: alumni.length, skipped: skipped.length, academicYear },
+  });
+
+  return {
+    promoted: moves.length,
+    alumni: alumni.length,
+    skipped: skipped.length,
+    academicYear,
+    yearAdvanced: Boolean(nextYear),
+  };
 }
 
 export function studentSaveMessage(action: "saved" | "updated", sms: SmsSendSummary): string {

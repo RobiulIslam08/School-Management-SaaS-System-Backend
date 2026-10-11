@@ -35,5 +35,12 @@ router.post(
   validate(promoteValidation),
   asyncHandler(studentController.promote)
 );
+router.post(
+  "/students/promote-all",
+  authenticate,
+  authorize("students:approve"),
+  requireFeature("students"),
+  asyncHandler(studentController.promoteAll)
+);
 
 export const studentsRouter = router;
