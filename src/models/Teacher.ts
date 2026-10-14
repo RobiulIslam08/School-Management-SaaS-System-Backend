@@ -9,6 +9,8 @@ export interface TeacherDoc {
   subjects: mongoose.Types.ObjectId[];
   classTeacherOf?: { classId: mongoose.Types.ObjectId; section: string };
   photoUrl?: string;
+  bioBn?: string;
+  bioEn?: string;
   salaryStructure: {
     basic: number;
     house: number;
@@ -27,6 +29,8 @@ const teacherSchema = new Schema<TeacherDoc>(
     email: { type: String, default: "", lowercase: true },
     phone: { type: String, default: "" },
     photoUrl: { type: String, default: "" },
+    bioBn: { type: String, default: "" },
+    bioEn: { type: String, default: "" },
     designation: { type: String, default: "Teacher" },
     subjects: [{ type: Schema.Types.ObjectId, ref: "Subject" }],
     classTeacherOf: {

@@ -7,6 +7,8 @@ export const teacherCreateValidation = z.object({
   phone: z.string().optional(),
   designation: z.string().optional(),
   photoUrl: z.string().optional(),
+  bioBn: z.string().max(2000).optional(),
+  bioEn: z.string().max(2000).optional(),
   joiningDate: z.string().optional(),
   retirementDate: z.string().optional(),
   subjects: z.array(z.string()).optional(),
