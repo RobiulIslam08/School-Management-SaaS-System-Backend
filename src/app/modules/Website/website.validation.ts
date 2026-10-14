@@ -95,7 +95,7 @@ export const websiteConfigValidation = z.object({
         visitEn: z.array(z.string().max(160)).max(8).optional(),
       })
     )
-    .max(12)
+    .max(16)
     .optional(),
   resultLookupEnabled: z.boolean().optional(),
   receiptLookupEnabled: z.boolean().optional(),
@@ -165,8 +165,8 @@ export const websitePersonValidation = z.object({
   name: z.string().min(2).max(80),
   designation: text(80),
   photoUrl: z.string().max(2_000_000).optional(),
-  bioBn: text(800),
-  bioEn: text(800),
+  bioBn: text(2000),
+  bioEn: text(2000),
   phone: text(40),
   teacherId: z.string().optional(),
   sortOrder: z.number().int().optional(),

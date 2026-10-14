@@ -23,7 +23,7 @@ import { ApiError } from "../../../utils/ApiError";
 import { msg } from "../../../utils/messages";
 import { requireId, routeParam } from "../../../utils/persist";
 import { listPublicNotices } from "../Notice/notice.service";
-import { defaultAdmit, defaultConfig, defaultPages, defaultPosts, ensureReceiptsMenu, publicDesks, publicTasks, type MenuItem } from "./website.defaults";
+import { defaultAdmit, defaultConfig, defaultPages, defaultPosts, ensureLeadershipMenu, ensureReceiptsMenu, publicDesks, publicTasks, type MenuItem } from "./website.defaults";
 import { ensureNoticeBoard } from "../Notice/notice.board";
 import { ensureWebsiteShowcase } from "./website.showcase";
 import { RESULT_MISS, decodeMediaDataUrl, isAllowedImage, isEmbedUrl, seoLengthOk } from "./website.guards";
@@ -175,7 +175,7 @@ function cleanMap(value: string | undefined): string {
 function lockMenus(menus: MenuItem[] | undefined): MenuItem[] {
   const source = menus?.length ? menus : defaultConfig().menus;
   const locked = new Set(["home", "contact", "login"]);
-  return ensureReceiptsMenu(source.map((item) => (locked.has(item.key) ? { ...item, visible: true, locked: true } : item)));
+  return ensureLeadershipMenu(ensureReceiptsMenu(source.map((item) => (locked.has(item.key) ? { ...item, visible: true, locked: true } : item))));
 }
 
 function publicConfig(doc: Record<string, unknown>) {
@@ -296,7 +296,7 @@ export async function saveConfig(body: Record<string, unknown>) {
           .slice(0, 8)
       : doc.get("stats"),
     tasks: Array.isArray(body.tasks) ? body.tasks.slice(0, 3) : doc.get("tasks"),
-    desks: Array.isArray(body.desks) ? body.desks.slice(0, 12) : doc.get("desks"),
+    desks: Array.isArray(body.desks) ? body.desks.slice(0, 16) : doc.get("desks"),
   };
   doc.set(next);
   await doc.save();

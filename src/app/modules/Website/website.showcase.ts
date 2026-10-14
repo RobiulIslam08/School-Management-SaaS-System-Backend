@@ -131,6 +131,8 @@ async function fillConfig(): Promise<void> {
   if (!String(config.heroImageUrl ?? "").trim()) patch.heroImageUrl = PHOTO.campus;
   if (!String(config.heroVideoUrl ?? "").trim()) patch.heroVideoUrl = HERO_VIDEO;
   if (!String(config.principalPhotoUrl ?? "").trim()) patch.principalPhotoUrl = PORTRAITS[8];
+  if (!String(config.principalName ?? "").trim()) patch.principalName = "নুরুল ইসলাম";
+  if (!String(config.principalDesignation ?? "").trim()) patch.principalDesignation = "অধ্যক্ষ";
   if (!String(config.mapEmbedUrl ?? "").trim()) patch.mapEmbedUrl = MAP;
   if (!String(config.phone ?? "").trim()) patch.phone = "01700-000000";
   if (!String(config.email ?? "").trim()) patch.email = "office@school.edu.bd";
@@ -321,7 +323,7 @@ async function fillAlbums(): Promise<void> {
 async function fillPeople(): Promise<void> {
   const people = [
     { board: "principal", name: "নুরুল ইসলাম", designation: "প্রধান শিক্ষক", photoUrl: PORTRAITS[8], phone: "01711-100001", bioBn: "ক্যাম্পাসের দৈনন্দিন শিক্ষা ও শৃঙ্খলা দেখাশোনা করেন।", bioEn: "Looks after daily teaching and discipline on campus." },
-    { board: "vice", name: "সালমা আক্তার", designation: "সহকারী প্রধান শিক্ষক", photoUrl: PORTRAITS[1], phone: "01711-100002", bioBn: "রুটিন, উপস্থিতি ও শ্রেণি শিক্ষকদের সঙ্গে সমন্বয় করেন।", bioEn: "Coordinates the routine, attendance, and class teachers." },
+    { board: "vice", name: "সালমা আক্তার", designation: "সহকারি অধ্যক্ষ", photoUrl: PORTRAITS[1], phone: "01711-100002", bioBn: "রুটিন, উপস্থিতি ও শ্রেণি শিক্ষকদের সঙ্গে সমন্বয় করেন।", bioEn: "Coordinates the routine, attendance, and class teachers." },
     { board: "librarian", name: "রেহানা খাতুন", designation: "গ্রন্থাগারিক", photoUrl: PORTRAITS[5], phone: "01711-100003", bioBn: "পাঠাগারের বই, কার্ড ও পড়ার আসর দেখেন।", bioEn: "Looks after books, cards, and the reading hour." },
     { board: "accounts", name: "কামরুল হাসান", designation: "হিসাবরক্ষক", photoUrl: PORTRAITS[4], phone: "01711-100004", bioBn: "ফি রসিদ ও মাসিক হিসাব অফিস থেকে দেন।", bioEn: "Issues fee receipts and monthly accounts from the office." },
     { board: "admission", name: "ফারহানা চৌধুরী", designation: "ভর্তি শাখা", photoUrl: PORTRAITS[7], phone: "01711-100005", bioBn: "আবেদনপত্র যাচাই ও ভর্তি নোটিশের দায়িত্বে আছেন।", bioEn: "Checks applications and the admission notice." },
@@ -334,6 +336,10 @@ async function fillPeople(): Promise<void> {
     { board: "syndicate", name: "ইকবাল হোসেন", designation: "সিন্ডিকেট সদস্য", photoUrl: PORTRAITS[6], phone: "01711-100013", bioBn: "পরীক্ষা ও ফল প্রকাশের সময়সূচি দেখেন।", bioEn: "Watches the exam and result calendar." },
     { board: "pta", name: "কামাল উদ্দিন", designation: "অভিভাবক কমিটির আহ্বায়ক", photoUrl: PORTRAITS[4], phone: "01711-100011", bioBn: "অভিভাবক সভার তারিখ ও আলোচ্য বিষয় জানান।", bioEn: "Sets parent meetings and what will be discussed." },
     { board: "pta", name: "শাহনাজ পারভীন", designation: "অভিভাবক প্রতিনিধি", photoUrl: PORTRAITS[5], phone: "01711-100014", bioBn: "অভিভাবকদের প্রশ্ন সভায় তোলেন।", bioEn: "Brings family questions to the meeting." },
+    { board: "committee", name: "মো. করিম উদ্দিন", designation: "সভাপতি", photoUrl: PORTRAITS[0], phone: "", bioBn: "স্কুল কমিটির সভা ডাকেন।", bioEn: "Calls school committee meetings." },
+    { board: "committee", name: "রাবেয়া সুলতানা", designation: "সহ-সভাপতি", photoUrl: PORTRAITS[9], phone: "", bioBn: "অভিভাবকদের সঙ্গে আলোচনার দায়িত্বে আছেন।", bioEn: "Leads talks with families." },
+    { board: "committee", name: "জাহিদ হাসান", designation: "সদস্য", photoUrl: PORTRAITS[2], phone: "", bioBn: "ক্যাম্পাস ও ক্লাসের বিষয় সভায় তোলেন।", bioEn: "Raises campus and class matters in the meeting." },
+    { board: "committee", name: "নাসরিন আক্তার", designation: "সদস্য", photoUrl: PORTRAITS[7], phone: "", bioBn: "সভার সিদ্ধান্ত নোটিশে তোলার দিকে খেয়াল রাখেন।", bioEn: "Watches that meeting decisions go up as a notice." },
   ];
   for (const person of people) {
     const rows = await WebsitePerson.find({ board: person.board, name: person.name }).sort({ createdAt: 1 });
@@ -352,9 +358,17 @@ async function fillPeople(): Promise<void> {
       await WebsitePerson.create({ ...missing[index], sortOrder: existing.length + index, status: "published" });
     }
   }
-  const longer: Record<string, { bioBn: string; bioEn: string }> = {
-    "নুরুল ইসলাম": { bioBn: "ক্যাম্পাসের দৈনন্দিন শিক্ষা ও শৃঙ্খলা দেখেন। ক্লাস চলাকালীন অফিসে থাকেন এবং অভিভাবকের প্রশ্ন অফিস সময়ে শোনেন।", bioEn: "Looks after daily teaching and discipline. Stays in the office during class and hears family questions in office hours." },
-    "সালমা আক্তার": { bioBn: "রুটিন, উপস্থিতি ও শ্রেণি শিক্ষকদের সমন্বয় করেন। দেরিতে আসা শিক্ষার্থীর খাতা অফিসে রাখেন।", bioEn: "Coordinates the routine, attendance, and class teachers. Keeps the late-arrival note at the office." },
+  const longer: Record<string, { bioBn: string; bioEn: string; also?: string[] }> = {
+    "নুরুল ইসলাম": {
+      bioBn: "প্রিয় অভিভাবক ও শিক্ষার্থী,\n\nআমাদের স্কুলে প্রতিদিনের কাজ সহজ: ক্লাসে মন দিয়ে পড়া, নিয়ম মেনে চলা, এবং একে অপরকে সম্মান করা। অধ্যক্ষ হিসেবে আমি চাই প্রতিটি শিক্ষার্থী নিরাপদে শিখুক এবং নিজের কথা অফিস সময়ে বলতে পারুক।\n\nঅভিভাবকের কোনো প্রশ্ন থাকলে অফিস সময়ে আসুন। জরুরি খবর নোটিশ বোর্ডে দেওয়া হয়। ব্যক্তিগত বিষয় এই পাতায় প্রকাশ করা হয় না।",
+      bioEn: "Dear families and students,\n\nOur daily work is simple: study with attention, follow the rules, and respect one another. As principal I want every student to learn in safety and to be able to speak at the office during office hours.\n\nCome in office hours if you have a question. Urgent news is posted on the notice board. Private matters are not published on this page.",
+      also: ["ক্যাম্পাসের দৈনন্দিন শিক্ষা ও শৃঙ্খলা দেখেন। ক্লাস চলাকালীন অফিসে থাকেন এবং অভিভাবকের প্রশ্ন অফিস সময়ে শোনেন।"],
+    },
+    "সালমা আক্তার": {
+      bioBn: "প্রিয় শিক্ষার্থী ও অভিভাবক,\n\nসহকারি অধ্যক্ষ হিসেবে আমি রুটিন, উপস্থিতি এবং শ্রেণি শিক্ষকদের কাজ মিলিয়ে দেখি। ক্লাস যাতে সময়মতো শুরু হয়, সেদিকে নজর থাকে।\n\nদেরিতে এলে কারণ অফিসে লিখে রাখা হয়। রুটিন বদলালে তারিখ নোটিশে থাকে। সকালে, ক্লাস শুরুর আগে, এই ডেস্কে কথা বলা সহজ।",
+      bioEn: "Dear students and families,\n\nAs assistant principal I match the routine, attendance, and the work of class teachers. I watch that class starts on time.\n\nA late arrival is written in the office note. A routine change is dated in a notice. The easiest time to talk is in the morning, before class.",
+      also: ["রুটিন, উপস্থিতি ও শ্রেণি শিক্ষকদের সমন্বয় করেন। দেরিতে আসা শিক্ষার্থীর খাতা অফিসে রাখেন।"],
+    },
     "রেহানা খাতুন": { bioBn: "পাঠাগারের বই, কার্ড ও পড়ার আসর দেখেন। নতুন বই এলে নোটিশ বোর্ডে তালিকা দেন।", bioEn: "Looks after books, cards, and the reading hour. Pins a list when new books arrive." },
     "কামরুল হাসান": { bioBn: "ফি রসিদ ও মাসিক হিসাব অফিস থেকে দেন। অনলাইনে টাকা কাটা হয় না। রসিদ ছাড়া জমা লেখেন না।", bioEn: "Issues fee receipts and monthly accounts from the office. Nothing is charged online. A payment without a receipt is not entered." },
     "ফারহানা চৌধুরী": { bioBn: "আবেদনপত্র যাচাই ও ভর্তি নোটিশ দেখেন। কাগজ অফিসে জমা হয়। সিট নোটিশ ও আসন দেখে জানানো হয়।", bioEn: "Checks applications and the admission notice. Papers are handed in at the office. A seat is confirmed only after the notice and the seats are checked." },
@@ -367,15 +381,36 @@ async function fillPeople(): Promise<void> {
     "ইকবাল হোসেন": { bioBn: "পরীক্ষা ও ফল প্রকাশের সময়সূচি দেখেন। অপ্রকাশিত নম্বর সাইটে আসে না।", bioEn: "Watches the exam and result calendar. Unpublished marks do not appear on the site." },
     "কামাল উদ্দিন": { bioBn: "অভিভাবক সভার তারিখ ও আলোচ্য বিষয় জানান। সভা অফিস সময়ে বা নোটিশে লেখা সময়ে বসে।", bioEn: "Sets parent meetings and the agenda. Meetings sit in office hours or at the time written in a notice." },
     "শাহনাজ পারভীন": { bioBn: "অভিভাবকদের প্রশ্ন সভায় তোলেন। ব্যক্তিগত ফোন বা ঠিকানা এই তালিকায় থাকে না।", bioEn: "Brings family questions to the meeting. Personal phone numbers and addresses are not on this list." },
+    "মো. করিম উদ্দিন": {
+      bioBn: "স্কুল কমিটির সভাপতি হিসেবে বড় সিদ্ধান্ত সভায় তুলি। সভার তারিখ নোটিশে থাকে। অভিভাবকদের কথা শুনে সিদ্ধান্তের খসড়া সদস্যদের আগে দেখি।",
+      bioEn: "As chair I bring major decisions to the school committee. The meeting date is a notice. Families are heard, and members see a draft before the meeting.",
+    },
+    "রাবেয়া সুলতানা": {
+      bioBn: "সহ-সভাপতি হিসেবে অভিভাবকদের সঙ্গে আলোচনা দেখি। সভার আলোচ্য বিষয় আগে জানানো হয়। ব্যক্তিগত ফোন এই পাতায় নেই।",
+      bioEn: "As vice-chair I lead talks with families. The agenda is shared before the meeting. Personal phones are not on this page.",
+    },
+    "জাহিদ হাসান": {
+      bioBn: "কমিটির সদস্য হিসেবে ক্যাম্পাস, ক্লাস এবং নিরাপত্তার বিষয় সভায় তুলি। সিদ্ধান্ত হলে তা নোটিশে প্রকাশ হয়।",
+      bioEn: "As a member I raise campus, class, and safety matters. A decision is published as a notice.",
+    },
+    "নাসরিন আক্তার": {
+      bioBn: "সভার সিদ্ধান্ত যেন নোটিশ বোর্ডে ওঠে, সেদিকে খেয়াল রাখি। অফিস সময়ে নাম লিখে কথা বলা যায়। বাড়ির ঠিকানা এই তালিকায় নেই।",
+      bioEn: "I watch that meeting decisions reach the notice board. You can leave a name and speak during office hours. Home addresses are not on this list.",
+    },
   };
   for (const person of people) {
     const next = longer[person.name];
     if (!next) continue;
     const row = await WebsitePerson.findOne({ board: person.board, name: person.name });
     if (!row) continue;
-    if (row.bioBn === person.bioBn || !String(row.bioBn ?? "").trim()) {
-      row.bioBn = next.bioBn;
-      row.bioEn = next.bioEn;
+    const known = new Set([person.bioBn, ...(next.also ?? [])]);
+    const oldTitle = row.designation === "সহকারী প্রধান শিক্ষক";
+    if (known.has(String(row.bioBn ?? "")) || !String(row.bioBn ?? "").trim() || oldTitle) {
+      if (known.has(String(row.bioBn ?? "")) || !String(row.bioBn ?? "").trim()) {
+        row.bioBn = next.bioBn;
+        row.bioEn = next.bioEn;
+      }
+      if (oldTitle) row.designation = "সহকারি অধ্যক্ষ";
       await row.save();
     }
   }

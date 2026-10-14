@@ -24,6 +24,14 @@ export const receiptsMenuChild: MenuChild = {
   visible: true,
 };
 
+export const committeeMenuChild: MenuChild = {
+  key: "committee",
+  href: "/authorities/committee",
+  labelBn: "স্কুল কমিটি",
+  labelEn: "School committee",
+  visible: true,
+};
+
 /** Puts the receipts link after results when a saved menu does not have it yet. A hidden link stays hidden. */
 export function ensureReceiptsMenu(menus: MenuItem[]): MenuItem[] {
   return menus.map((item) => {
@@ -35,6 +43,31 @@ export function ensureReceiptsMenu(menus: MenuItem[]): MenuItem[] {
     const next = children.slice();
     next.splice(insertAt, 0, { ...receiptsMenuChild });
     return { ...item, children: next };
+  });
+}
+
+/** Adds the school committee link once, and renames the old assistant-principal label. */
+export function ensureLeadershipMenu(menus: MenuItem[]): MenuItem[] {
+  return menus.map((item) => {
+    if (item.key === "authorities") {
+      const children = item.children ?? [];
+      if (children.some((child) => child.key === "committee")) return item;
+      const governingAt = children.findIndex((child) => child.key === "governing");
+      const insertAt = governingAt === -1 ? children.length : governingAt;
+      const next = children.slice();
+      next.splice(insertAt, 0, { ...committeeMenuChild });
+      return { ...item, children: next };
+    }
+    if (item.key !== "office") return item;
+    const children = (item.children ?? []).map((child) => {
+      if (child.key !== "vice") return child;
+      return {
+        ...child,
+        labelBn: child.labelBn === "সহকারী প্রধান শিক্ষক" ? "সহকারি অধ্যক্ষ" : child.labelBn,
+        labelEn: child.labelEn === "Vice principal" ? "Assistant principal" : child.labelEn,
+      };
+    });
+    return { ...item, children };
   });
 }
 
@@ -95,6 +128,7 @@ export function defaultMenus(): MenuItem[] {
       labelEn: "Authorities",
       visible: true,
       children: [
+        { ...committeeMenuChild },
         { key: "governing", href: "/authorities/governing", labelBn: "পরিচালনা পর্ষদ", labelEn: "Governing body", visible: true },
         { key: "council", href: "/authorities/council", labelBn: "একাডেমিক কাউন্সিল", labelEn: "Academic council", visible: true },
         { key: "syndicate", href: "/authorities/syndicate", labelBn: "সিন্ডিকেট", labelEn: "Syndicate", visible: true },
@@ -109,7 +143,7 @@ export function defaultMenus(): MenuItem[] {
       visible: true,
       children: [
         { key: "principal", href: "/office/principal", labelBn: "অধ্যক্ষ", labelEn: "Principal", visible: true },
-        { key: "vice", href: "/office/vice", labelBn: "সহকারী প্রধান শিক্ষক", labelEn: "Vice principal", visible: true },
+        { key: "vice", href: "/office/vice", labelBn: "সহকারি অধ্যক্ষ", labelEn: "Assistant principal", visible: true },
         { key: "admission", href: "/office/admission", labelBn: "ভর্তি শাখা", labelEn: "Admission office", visible: true },
         { key: "accounts", href: "/office/accounts", labelBn: "হিসাব শাখা", labelEn: "Accounts", visible: true },
         { key: "librarian", href: "/office/librarian", labelBn: "গ্রন্থাগারিক", labelEn: "Librarian", visible: true },
@@ -452,8 +486,8 @@ export function defaultDesks(): DeskCopy[] {
     },
     {
       key: "vice",
-      noteBn: "সহকারী প্রধান শিক্ষক রুটিন, উপস্থিতি ও শ্রেণি শিক্ষকদের সমন্বয় দেখেন। দেরির খাতা এই ডেস্কে।",
-      noteEn: "The vice principal watches the routine, attendance, and class teachers. The late-arrival note stays at this desk.",
+      noteBn: "সহকারি অধ্যক্ষ রুটিন, উপস্থিতি ও শ্রেণি শিক্ষকদের সমন্বয় দেখেন। দেরির খাতা এই ডেস্কে।",
+      noteEn: "The assistant principal watches the routine, attendance, and class teachers. The late-arrival note stays at this desk.",
       dutiesBn: ["রুটিন ও উপস্থিতি", "শ্রেণি শিক্ষকদের সমন্বয়", "দেরির খাতা"],
       dutiesEn: ["Routine and attendance", "Coordinates class teachers", "The late-arrival note"],
       visitBn: ["সকালে, ক্লাস শুরুর আগে", "দেরির কারণ এখানে", "রুটিন বদল নোটিশে"],
@@ -540,6 +574,15 @@ export function defaultDesks(): DeskCopy[] {
       visitBn: ["সভার তারিখ নোটিশে", "অফিস সময়ে নাম লেখান", "আলোচ্য বিষয় আগে"],
       visitEn: ["The meeting date is a notice", "Give a name during office hours", "Read the agenda first"],
     },
+    {
+      key: "committee",
+      noteBn: "স্কুল কমিটি স্কুলের বড় সিদ্ধান্ত ও অভিভাবকদের সঙ্গে আলোচনা দেখে। সভার তারিখ নোটিশে। সদস্যদের ফোন এই পাতায় নেই।",
+      noteEn: "The school committee watches major decisions and talks with families. The meeting date is a notice. Member phones are not on this page.",
+      dutiesBn: ["বড় সিদ্ধান্ত সভায়", "অভিভাবকদের সঙ্গে আলোচনা", "সভার তারিখ নোটিশে"],
+      dutiesEn: ["Major decisions in a meeting", "Talks with families", "The meeting date is a notice"],
+      visitBn: ["সভার তারিখ নোটিশে", "অফিস সময়ে যোগাযোগ", "সিদ্ধান্ত নোটিশে"],
+      visitEn: ["The meeting date is a notice", "Contact during office hours", "The decision is a notice"],
+    },
   ];
 }
 
@@ -548,8 +591,18 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return value as Record<string, unknown>;
 }
 
+const OLD_VICE_NOTES = {
+  bn: "সহকারী প্রধান শিক্ষক রুটিন, উপস্থিতি ও শ্রেণি শিক্ষকদের সমন্বয় দেখেন। দেরির খাতা এই ডেস্কে।",
+  en: "The vice principal watches the routine, attendance, and class teachers. The late-arrival note stays at this desk.",
+};
+
 function textOf(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function freshNote(stored: string, fallback: string, retired: string): string {
+  if (!stored || stored === retired) return fallback;
+  return stored;
 }
 
 function listOf(value: unknown): string[] {
@@ -590,8 +643,8 @@ export function publicDesks(value: unknown): DeskCopy[] {
     const visitEn = listOf(row.visitEn);
     return {
       key: desk.key,
-      noteBn: textOf(row.noteBn) || desk.noteBn,
-      noteEn: textOf(row.noteEn) || desk.noteEn,
+      noteBn: freshNote(textOf(row.noteBn), desk.noteBn, OLD_VICE_NOTES.bn),
+      noteEn: freshNote(textOf(row.noteEn), desk.noteEn, OLD_VICE_NOTES.en),
       dutiesBn: dutiesBn.length ? dutiesBn : desk.dutiesBn,
       dutiesEn: dutiesEn.length ? dutiesEn : desk.dutiesEn,
       visitBn: visitBn.length ? visitBn : desk.visitBn,

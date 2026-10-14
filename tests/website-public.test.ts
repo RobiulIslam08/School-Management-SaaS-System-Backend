@@ -1,4 +1,4 @@
-import { defaultDesks, defaultMenus, defaultPages, defaultTasks, ensureReceiptsMenu, publicDesks, publicTasks } from "../src/app/modules/Website/website.defaults";
+import { defaultDesks, defaultMenus, defaultPages, defaultTasks, ensureLeadershipMenu, ensureReceiptsMenu, publicDesks, publicTasks } from "../src/app/modules/Website/website.defaults";
 import { RESULT_MISS, decodeMediaDataUrl, isAllowedImage, isEmbedUrl, sameDob, seoLengthOk } from "../src/app/modules/Website/website.guards";
 import { RECEIPT_MISS, groupPublicReceipts, legacyReceiptNo, type ReceiptSource } from "../src/app/modules/Website/website.receipts";
 import { contrastRatio, readableOn, themeTokens } from "../src/app/modules/Website/website.theme";
@@ -69,17 +69,19 @@ describe("website guards", () => {
 });
 
 describe("website copy", () => {
-  it("keeps three home tasks and eleven desks", () => {
+  it("keeps three home tasks and twelve desks", () => {
     expect(defaultTasks()).toHaveLength(3);
     const desks = defaultDesks();
-    expect(desks).toHaveLength(11);
-    expect(new Set(desks.map((desk) => desk.key)).size).toBe(11);
+    expect(desks).toHaveLength(12);
+    expect(new Set(desks.map((desk) => desk.key)).size).toBe(12);
+    expect(desks.some((desk) => desk.key === "committee")).toBe(true);
   });
 
   it("falls back when stored home tasks or desks are empty", () => {
     expect(publicTasks([])[0]?.titleBn).toBe(defaultTasks()[0]?.titleBn);
     expect(publicDesks([{ key: "principal", noteBn: "", dutiesBn: [] }])[0]?.noteBn).toBe(defaultDesks()[0]?.noteBn);
     expect(publicDesks([{ key: "principal", noteBn: "নিজের নোট", dutiesBn: ["এক"] }])[0]?.noteBn).toBe("নিজের নোট");
+    expect(publicDesks([{ key: "vice", noteBn: "সহকারী প্রধান শিক্ষক রুটিন, উপস্থিতি ও শ্রেণি শিক্ষকদের সমন্বয় দেখেন। দেরির খাতা এই ডেস্কে।", noteEn: "The vice principal watches the routine, attendance, and class teachers. The late-arrival note stays at this desk." }]).find((desk) => desk.key === "vice")?.noteBn).toBe("সহকারি অধ্যক্ষ রুটিন, উপস্থিতি ও শ্রেণি শিক্ষকদের সমন্বয় দেখেন। দেরির খাতা এই ডেস্কে।");
   });
 
   it("places payment receipts after results and does not duplicate a hidden link", () => {
@@ -101,6 +103,39 @@ describe("website copy", () => {
     );
     const kept = ensureReceiptsMenu(hidden).find((item) => item.key === "academic");
     expect(kept?.children.find((child) => child.key === "receipts")?.visible).toBe(false);
+  });
+
+  it("adds the school committee once and renames the old assistant-principal label", () => {
+    const authorities = defaultMenus().find((item) => item.key === "authorities");
+    const keys = authorities?.children.map((child) => child.key) ?? [];
+    expect(keys.indexOf("committee")).toBe(keys.indexOf("governing") - 1);
+    expect(defaultMenus().find((item) => item.key === "office")?.children.find((child) => child.key === "vice")?.labelBn).toBe("সহকারি অধ্যক্ষ");
+    expect(defaultDesks().some((desk) => desk.key === "committee")).toBe(true);
+
+    const stripped = defaultMenus().map((item) =>
+      item.key === "authorities" ? { ...item, children: item.children.filter((child) => child.key !== "committee") } : item
+    );
+    const inserted = ensureLeadershipMenu(stripped).find((item) => item.key === "authorities");
+    expect(inserted?.children.filter((child) => child.key === "committee")).toHaveLength(1);
+
+    const oldVice = defaultMenus().map((item) =>
+      item.key === "office"
+        ? {
+            ...item,
+            children: item.children.map((child) =>
+              child.key === "vice" ? { ...child, labelBn: "সহকারী প্রধান শিক্ষক", labelEn: "Vice principal" } : child
+            ),
+          }
+        : item
+    );
+    const renamed = ensureLeadershipMenu(oldVice).find((item) => item.key === "office");
+    expect(renamed?.children.find((child) => child.key === "vice")).toMatchObject({
+      labelBn: "সহকারি অধ্যক্ষ",
+      labelEn: "Assistant principal",
+    });
+
+    const custom = ensureLeadershipMenu(defaultMenus()).find((item) => item.key === "authorities");
+    expect(custom?.children.filter((child) => child.key === "committee")).toHaveLength(1);
   });
 });
 
