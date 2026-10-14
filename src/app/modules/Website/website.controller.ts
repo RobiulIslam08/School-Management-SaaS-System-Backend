@@ -22,6 +22,7 @@ import {
   getPublicPost,
   getPublicRoutine,
   getPublicSite,
+  invalidatePublicSiteCache,
   listPublicExams,
   lookupPublicReceipts,
   lookupPublicResult,
@@ -41,73 +42,111 @@ export const websiteController = {
     ok(res, await getAdminBundle(), msg.loaded("Website"));
   },
   async saveConfig(req: Request, res: Response): Promise<void> {
-    ok(res, await saveConfig(req.body), msg.updated("Website"));
+    const result = await saveConfig(req.body);
+    invalidatePublicSiteCache();
+    ok(res, result, msg.updated("Website"));
   },
   async createPage(req: Request, res: Response): Promise<void> {
-    ok(res, await createPage(req.body), msg.saved("Page"), 201);
+    const result = await createPage(req.body);
+    invalidatePublicSiteCache();
+    ok(res, result, msg.saved("Page"), 201);
   },
   async updatePage(req: Request, res: Response): Promise<void> {
-    ok(res, await updatePage(routeParam(req.params.id), req.body), msg.updated("Page"));
+    const result = await updatePage(routeParam(req.params.id), req.body);
+    invalidatePublicSiteCache();
+    ok(res, result, msg.updated("Page"));
   },
   async deletePage(req: Request, res: Response): Promise<void> {
-    ok(res, await deletePage(routeParam(req.params.id)), msg.deleted("Page"));
+    const result = await deletePage(routeParam(req.params.id));
+    invalidatePublicSiteCache();
+    ok(res, result, msg.deleted("Page"));
   },
   async createPost(req: Request, res: Response): Promise<void> {
-    ok(res, await createPost(req.body), msg.saved("Post"), 201);
+    const result = await createPost(req.body);
+    invalidatePublicSiteCache();
+    ok(res, result, msg.saved("Post"), 201);
   },
   async updatePost(req: Request, res: Response): Promise<void> {
-    ok(res, await updatePost(routeParam(req.params.id), req.body), msg.updated("Post"));
+    const result = await updatePost(routeParam(req.params.id), req.body);
+    invalidatePublicSiteCache();
+    ok(res, result, msg.updated("Post"));
   },
   async deletePost(req: Request, res: Response): Promise<void> {
-    ok(res, await deletePost(routeParam(req.params.id)), msg.deleted("Post"));
+    const result = await deletePost(routeParam(req.params.id));
+    invalidatePublicSiteCache();
+    ok(res, result, msg.deleted("Post"));
   },
   async createAlbum(req: Request, res: Response): Promise<void> {
-    ok(res, await createAlbum(req.body), msg.saved("Album"), 201);
+    const result = await createAlbum(req.body);
+    invalidatePublicSiteCache();
+    ok(res, result, msg.saved("Album"), 201);
   },
   async updateAlbum(req: Request, res: Response): Promise<void> {
-    ok(res, await updateAlbum(routeParam(req.params.id), req.body), msg.updated("Album"));
+    const result = await updateAlbum(routeParam(req.params.id), req.body);
+    invalidatePublicSiteCache();
+    ok(res, result, msg.updated("Album"));
   },
   async deleteAlbum(req: Request, res: Response): Promise<void> {
-    ok(res, await deleteAlbum(routeParam(req.params.id)), msg.deleted("Album"));
+    const result = await deleteAlbum(routeParam(req.params.id));
+    invalidatePublicSiteCache();
+    ok(res, result, msg.deleted("Album"));
   },
   async createMedia(req: Request, res: Response): Promise<void> {
-    ok(res, await createMedia(req.body), msg.saved("Media"), 201);
+    const result = await createMedia(req.body);
+    invalidatePublicSiteCache();
+    ok(res, result, msg.saved("Media"), 201);
   },
   async deleteMedia(req: Request, res: Response): Promise<void> {
-    ok(res, await deleteMedia(routeParam(req.params.id)), msg.deleted("Media"));
+    const result = await deleteMedia(routeParam(req.params.id));
+    invalidatePublicSiteCache();
+    ok(res, result, msg.deleted("Media"));
   },
   async createPerson(req: Request, res: Response): Promise<void> {
-    ok(res, await createPerson(req.body), msg.saved("Person"), 201);
+    const result = await createPerson(req.body);
+    invalidatePublicSiteCache();
+    ok(res, result, msg.saved("Person"), 201);
   },
   async updatePerson(req: Request, res: Response): Promise<void> {
-    ok(res, await updatePerson(routeParam(req.params.id), req.body), msg.updated("Person"));
+    const result = await updatePerson(routeParam(req.params.id), req.body);
+    invalidatePublicSiteCache();
+    ok(res, result, msg.updated("Person"));
   },
   async deletePerson(req: Request, res: Response): Promise<void> {
-    ok(res, await deletePerson(routeParam(req.params.id)), msg.deleted("Person"));
+    const result = await deletePerson(routeParam(req.params.id));
+    invalidatePublicSiteCache();
+    ok(res, result, msg.deleted("Person"));
   },
   async createFile(req: Request, res: Response): Promise<void> {
     const created = await createFile(req.body);
+    invalidatePublicSiteCache();
     ok(res, { _id: created._id, filename: created.filename, size: created.size }, msg.saved("File"), 201);
   },
   async deleteFile(req: Request, res: Response): Promise<void> {
-    ok(res, await deleteFile(routeParam(req.params.id)), msg.deleted("File"));
+    const result = await deleteFile(routeParam(req.params.id));
+    invalidatePublicSiteCache();
+    ok(res, result, msg.deleted("File"));
   },
   async markInquiry(req: Request, res: Response): Promise<void> {
     ok(res, await markInquiry(routeParam(req.params.id), req.body.read !== false), msg.updated("Inquiry"));
   },
   async site(_req: Request, res: Response): Promise<void> {
+    res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
     ok(res, await getPublicSite(), msg.loaded("Website"));
   },
   async page(req: Request, res: Response): Promise<void> {
+    res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
     ok(res, await getPublicPage(routeParam(req.params.slug)), msg.loaded("Page"));
   },
   async post(req: Request, res: Response): Promise<void> {
+    res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
     ok(res, await getPublicPost(routeParam(req.params.id)), msg.loaded("Post"));
   },
   async album(req: Request, res: Response): Promise<void> {
+    res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
     ok(res, await getPublicAlbum(routeParam(req.params.id)), msg.loaded("Album"));
   },
   async syllabus(req: Request, res: Response): Promise<void> {
+    res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
     const classId = typeof req.query.classId === "string" ? req.query.classId : undefined;
     const outlines = await publicSyllabus(classId);
     ok(res, outlines, msg.loaded("Syllabus", outlines.length));
@@ -121,12 +160,14 @@ export const websiteController = {
     ok(res, await upsertSyllabus(req.body), msg.saved("Syllabus"));
   },
   async routine(req: Request, res: Response): Promise<void> {
+    res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
     const classId = typeof req.query.classId === "string" ? req.query.classId : undefined;
     const section = typeof req.query.section === "string" ? req.query.section : undefined;
     const slots = await getPublicRoutine(classId, section);
     ok(res, slots, msg.loaded("Routine", slots.length));
   },
   async exams(_req: Request, res: Response): Promise<void> {
+    res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
     const exams = await listPublicExams();
     ok(res, exams, msg.loaded("Exams", exams.length));
   },

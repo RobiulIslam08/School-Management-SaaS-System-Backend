@@ -512,7 +512,17 @@ export async function markInquiry(id: string | undefined, read: boolean) {
   return inquiry;
 }
 
+let cachedSite: { data: unknown; expiresAt: number } | null = null;
+
+export function invalidatePublicSiteCache(): void {
+  cachedSite = null;
+}
+
 export async function getPublicSite() {
+  const now = Date.now();
+  if (cachedSite && cachedSite.expiresAt > now) {
+    return cachedSite.data;
+  }
   await ensureWebsite();
   const [settings, config, pack, notices, posts, teachers, classes, subjects, people, pages, albums, files, albumCounts, videos] = await Promise.all([
     SchoolSettings.findOne().select("name logoUrl motto address eiin establishedYear academicYear").lean(),
@@ -552,7 +562,7 @@ export async function getPublicSite() {
     else imageCount.set(key, row.n);
   }
   const albumTitle = new Map(albums.map((album) => [String(album._id), album]));
-  return {
+  const result = {
     school: {
       name: settings?.name ?? "School",
       logoUrl: settings?.logoUrl ?? "",
@@ -619,6 +629,8 @@ export async function getPublicSite() {
     }),
     files,
   };
+  cachedSite = { data: result, expiresAt: now + 60_000 };
+  return result;
 }
 
 export async function getPublicPage(slug: string | undefined) {
