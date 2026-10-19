@@ -268,3 +268,107 @@ export async function exportResults(
     .populate("subjectMarks.subjectId", "name")
     .sort({ meritPosition: 1 });
 }
+
+// -------- Pass / Fail / Stats helpers --------
+
+async function buildScopedFilter(
+  examTypeId: string,
+  scope?: { classId?: string; section?: string }
+): Promise<Record<string, unknown>> {
+  const filter: Record<string, unknown> = { examTypeId, deletedAt: null };
+  if (scope?.classId || scope?.section) {
+    const students = await Student.find({
+      ...(scope?.classId ? { classId: scope.classId } : {}),
+      ...(scope?.section ? { section: scope.section } : {}),
+    }).select("_id");
+    filter.studentId = { $in: students.map((s) => s._id) };
+  }
+  return filter;
+}
+
+export async function getPassList(
+  examTypeId: string | undefined,
+  scope?: { classId?: string; section?: string }
+) {
+  if (!examTypeId) throw new ApiError(400, msg.notFoundRead("Exam"));
+  const filter = await buildScopedFilter(examTypeId, scope);
+  const rows = await Result.find(filter)
+    .populate({ path: "studentId", select: "name nameBn studentId rollNo section", populate: { path: "classId", select: "name" } })
+    .populate("examTypeId", "name code")
+    .sort({ meritPosition: 1 });
+  // A student passes if gpa > 0 and no subject has gpa = 0
+  return rows.filter((r) => r.gpa > 0 && r.subjectMarks.every((m) => m.gpa > 0));
+}
+
+export async function getFailList(
+  examTypeId: string | undefined,
+  scope?: { classId?: string; section?: string }
+) {
+  if (!examTypeId) throw new ApiError(400, msg.notFoundRead("Exam"));
+  const filter = await buildScopedFilter(examTypeId, scope);
+  const rows = await Result.find(filter)
+    .populate({ path: "studentId", select: "name nameBn studentId rollNo section", populate: { path: "classId", select: "name" } })
+    .populate("examTypeId", "name code")
+    .populate("subjectMarks.subjectId", "name code")
+    .sort({ meritPosition: 1 });
+  // A student fails if gpa = 0 or any subject gpa = 0
+  return rows
+    .filter((r) => r.gpa === 0 || r.subjectMarks.some((m) => m.gpa === 0))
+    .map((r) => ({
+      ...r.toObject(),
+      failedSubjects: r.subjectMarks.filter((m) => m.gpa === 0).map((m) => m.subjectId),
+    }));
+}
+
+export async function getResultStats(
+  examTypeId: string | undefined,
+  scope?: { classId?: string; section?: string }
+) {
+  if (!examTypeId) throw new ApiError(400, msg.notFoundRead("Exam"));
+  const filter = await buildScopedFilter(examTypeId, scope);
+  const rows = await Result.find(filter)
+    .populate("subjectMarks.subjectId", "name code")
+    .lean();
+
+  const total = rows.length;
+  if (total === 0) return { total: 0, passed: 0, failed: 0, passRate: 0, avgGpa: 0, avgPercent: 0, subjectStats: [] };
+
+  const passed = rows.filter((r) => r.gpa > 0 && r.subjectMarks.every((m: { gpa: number }) => m.gpa > 0)).length;
+  const failed = total - passed;
+  const avgGpa = rows.reduce((sum, r) => sum + (r.gpa ?? 0), 0) / total;
+  const avgPercent =
+    rows.reduce((sum, r) => {
+      const pct = r.totalFull ? (r.totalObtained / r.totalFull) * 100 : 0;
+      return sum + pct;
+    }, 0) / total;
+
+  // Subject-wise stats
+  const subjectMap = new Map<string, { name: string; code: string; totalObtained: number; totalFull: number; count: number; passed: number }>();
+  for (const row of rows) {
+    for (const mark of row.subjectMarks as unknown as Array<{ subjectId: { _id?: string; name?: string; code?: string } | string; obtained: number; full: number; gpa: number }>) {
+      const sub = mark.subjectId as { _id?: string; name?: string; code?: string } | string;
+      const subId = typeof sub === "object" ? String(sub._id ?? "") : String(sub);
+      const subName = typeof sub === "object" ? (sub.name ?? "") : "";
+      const subCode = typeof sub === "object" ? (sub.code ?? "") : "";
+      if (!subjectMap.has(subId)) {
+        subjectMap.set(subId, { name: subName, code: subCode, totalObtained: 0, totalFull: 0, count: 0, passed: 0 });
+      }
+      const s = subjectMap.get(subId)!;
+      s.totalObtained += mark.obtained ?? 0;
+      s.totalFull += mark.full ?? 0;
+      s.count += 1;
+      if (mark.gpa > 0) s.passed += 1;
+    }
+  }
+  const subjectStats = Array.from(subjectMap.entries()).map(([id, s]) => ({
+    subjectId: id,
+    name: s.name,
+    code: s.code,
+    avgObtained: s.count ? s.totalObtained / s.count : 0,
+    avgPercent: s.count && s.totalFull ? (s.totalObtained / s.totalFull) * 100 : 0,
+    passRate: s.count ? (s.passed / s.count) * 100 : 0,
+    count: s.count,
+  }));
+
+  return { total, passed, failed, passRate: (passed / total) * 100, avgGpa, avgPercent, subjectStats };
+}

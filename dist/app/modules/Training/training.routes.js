@@ -1,0 +1,16 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.trainingRouter = void 0;
+const express_1 = require("express");
+const authenticate_1 = require("../../../middleware/authenticate");
+const authorize_1 = require("../../../middleware/authorize");
+const requireFeature_1 = require("../../../middleware/requireFeature");
+const asyncHandler_1 = require("../../../utils/asyncHandler");
+const training_controller_1 = require("./training.controller");
+const router = (0, express_1.Router)();
+router.get("/trainings", authenticate_1.authenticate, (0, authorize_1.authorize)("teachers:view"), (0, requireFeature_1.requireFeature)("teachers"), (0, asyncHandler_1.asyncHandler)(training_controller_1.trainingController.list));
+router.post("/trainings", authenticate_1.authenticate, (0, authorize_1.authorize)("teachers:edit"), (0, requireFeature_1.requireFeature)("teachers"), (0, asyncHandler_1.asyncHandler)(training_controller_1.trainingController.create));
+router.patch("/trainings/:id", authenticate_1.authenticate, (0, authorize_1.authorize)("teachers:edit"), (0, requireFeature_1.requireFeature)("teachers"), (0, asyncHandler_1.asyncHandler)(training_controller_1.trainingController.update));
+router.delete("/trainings/:id", authenticate_1.authenticate, (0, authorize_1.authorize)("teachers:edit"), (0, requireFeature_1.requireFeature)("teachers"), (0, asyncHandler_1.asyncHandler)(training_controller_1.trainingController.remove));
+router.patch("/trainings/:id/attendance", authenticate_1.authenticate, (0, authorize_1.authorize)("teachers:edit"), (0, requireFeature_1.requireFeature)("teachers"), (0, asyncHandler_1.asyncHandler)(training_controller_1.trainingController.updateAttendance));
+exports.trainingRouter = router;

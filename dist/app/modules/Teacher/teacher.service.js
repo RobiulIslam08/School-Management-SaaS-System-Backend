@@ -10,7 +10,7 @@ async function listTeachers(q) {
     const filter = q
         ? { $or: [{ name: new RegExp(q, "i") }, { staffId: new RegExp(q, "i") }, { phone: new RegExp(q, "i") }] }
         : {};
-    return Teacher_1.Teacher.find(filter).populate("subjects", "name code").sort({ name: 1 });
+    return Teacher_1.Teacher.find(filter).populate("subjects", "name nameBn code").sort({ name: 1 });
 }
 async function createTeacher(body) {
     const count = await Teacher_1.Teacher.countDocuments();

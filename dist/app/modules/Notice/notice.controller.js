@@ -6,12 +6,20 @@ const persist_1 = require("../../../utils/persist");
 const respond_1 = require("../../../utils/respond");
 const notice_service_1 = require("./notice.service");
 exports.noticeController = {
-    async list(_req, res) {
-        const items = await (0, notice_service_1.listNotices)();
+    async list(req, res) {
+        const items = await (0, notice_service_1.listNotices)({
+            status: typeof req.query.status === "string" ? req.query.status : undefined,
+            audience: typeof req.query.audience === "string" ? req.query.audience : undefined,
+            q: typeof req.query.q === "string" ? req.query.q : undefined,
+            category: typeof req.query.category === "string" ? req.query.category : undefined,
+        });
         (0, respond_1.ok)(res, items, messages_1.msg.loaded("Notices", items.length));
     },
+    async get(req, res) {
+        (0, respond_1.ok)(res, await (0, notice_service_1.getNotice)((0, persist_1.routeParam)(req.params.id)), messages_1.msg.loaded("Notice"));
+    },
     async create(req, res) {
-        const created = await (0, notice_service_1.createNotice)(req.body);
+        const created = await (0, notice_service_1.createNotice)(req.body, req.user);
         (0, respond_1.ok)(res, created, messages_1.msg.saved("Notice"), 201);
     },
     async update(req, res) {

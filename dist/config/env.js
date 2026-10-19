@@ -4,9 +4,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.isProd = exports.env = exports.missingEnv = void 0;
-const crypto_1 = require("crypto");
 const dotenv_1 = __importDefault(require("dotenv"));
 const path_1 = __importDefault(require("path"));
+const secrets_1 = require("./secrets");
 // Vercel injects env in the dashboard. Loading a missing `.env` only logs noise.
 if (!process.env.VERCEL) {
     dotenv_1.default.config({ path: path_1.default.resolve(__dirname, "../../.env") });
@@ -26,13 +26,6 @@ function required(name, fallback) {
     }
     return value;
 }
-function resolveSecret(name, fallback) {
-    if (process.env[name])
-        return process.env[name];
-    if (!isProduction)
-        return fallback;
-    return (0, crypto_1.randomBytes)(32).toString("hex");
-}
 if (isProduction && !process.env.MONGODB_URI)
     rememberMissing("MONGODB_URI");
 const cookieSameSiteRaw = (process.env.COOKIE_SAMESITE ?? "lax").toLowerCase();
@@ -43,9 +36,22 @@ exports.env = {
     mongoUri: isProduction
         ? (process.env.MONGODB_URI ?? "")
         : required("MONGODB_URI", "mongodb://127.0.0.1:27017/school_management"),
-    jwtSecret: resolveSecret("JWT_SECRET", DEV_JWT),
-    jwtRefreshSecret: resolveSecret("JWT_REFRESH_SECRET", DEV_REFRESH),
+    jwtSecret: (0, secrets_1.resolveAppSecret)({
+        envValue: process.env.JWT_SECRET,
+        name: "JWT_SECRET",
+        isProduction,
+        devFallback: DEV_JWT,
+        mongoUri: process.env.MONGODB_URI ?? "",
+    }),
+    jwtRefreshSecret: (0, secrets_1.resolveAppSecret)({
+        envValue: process.env.JWT_REFRESH_SECRET,
+        name: "JWT_REFRESH_SECRET",
+        isProduction,
+        devFallback: DEV_REFRESH,
+        mongoUri: process.env.MONGODB_URI ?? "",
+    }),
     frontendOrigin: process.env.FRONTEND_ORIGIN ?? (isProduction ? "" : "http://localhost:3000"),
+    publicOrigin: process.env.PUBLIC_ORIGIN ?? (isProduction ? "" : "http://localhost:3001"),
     cookieSecure: process.env.COOKIE_SECURE === "true" || isProduction,
     cookieSameSite: cookieSameSite,
     ownerEmail: process.env.OWNER_EMAIL ?? "owner@example.com",

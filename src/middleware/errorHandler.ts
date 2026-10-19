@@ -7,8 +7,9 @@ import { fail } from "../utils/respond";
 import { msg } from "../utils/messages";
 
 export function errorHandler(err: unknown, _req: Request, res: Response, _next: NextFunction): void {
-  if (err instanceof ApiError) {
-    fail(res, err.statusCode, err.message, err.errors);
+  if (err instanceof ApiError || (typeof err === "object" && err !== null && "statusCode" in err && typeof (err as { statusCode: unknown }).statusCode === "number")) {
+    const apiErr = err as ApiError;
+    fail(res, apiErr.statusCode, apiErr.message, apiErr.errors ?? null);
     return;
   }
   if (err instanceof ZodError) {

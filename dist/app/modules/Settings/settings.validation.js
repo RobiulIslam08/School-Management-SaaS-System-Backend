@@ -12,5 +12,9 @@ exports.settingsUpdateValidation = zod_1.z.object({
     theme: zod_1.z.object({ primary: zod_1.z.string().optional(), radius: zod_1.z.string().optional() }).optional(),
     academicYear: zod_1.z.string().optional(),
     smsApiKey: zod_1.z.string().optional(),
+    smsSenderId: zod_1.z.string().optional(),
+    smsAdmissionEnabled: zod_1.z.boolean().optional(),
+    smsAttendanceEnabled: zod_1.z.boolean().optional(),
+    smsPayrollEnabled: zod_1.z.boolean().optional(),
     defaultLanguage: zod_1.z.enum(["bn", "en"]).optional(),
 });

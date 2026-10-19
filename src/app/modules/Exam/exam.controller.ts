@@ -10,6 +10,9 @@ import {
   publishExam,
   exportResults,
   finalGrade,
+  getFailList,
+  getPassList,
+  getResultStats,
   listExams,
   listGradingRules,
   listResults,
@@ -111,5 +114,26 @@ export const examController = {
     res.setHeader("Content-Disposition", "attachment; filename=results.xlsx");
     await workbook.xlsx.write(res);
     res.end();
+  },
+  async passList(req: Request, res: Response): Promise<void> {
+    const examTypeId = routeParam(req.params.examTypeId);
+    const classId = typeof req.query.classId === "string" ? req.query.classId : undefined;
+    const section = typeof req.query.section === "string" ? req.query.section : undefined;
+    const rows = await getPassList(examTypeId, { classId, section });
+    ok(res, rows, msg.loaded("Pass list", rows.length));
+  },
+  async failList(req: Request, res: Response): Promise<void> {
+    const examTypeId = routeParam(req.params.examTypeId);
+    const classId = typeof req.query.classId === "string" ? req.query.classId : undefined;
+    const section = typeof req.query.section === "string" ? req.query.section : undefined;
+    const rows = await getFailList(examTypeId, { classId, section });
+    ok(res, rows, msg.loaded("Fail list", rows.length));
+  },
+  async resultStats(req: Request, res: Response): Promise<void> {
+    const examTypeId = routeParam(req.params.examTypeId);
+    const classId = typeof req.query.classId === "string" ? req.query.classId : undefined;
+    const section = typeof req.query.section === "string" ? req.query.section : undefined;
+    const stats = await getResultStats(examTypeId, { classId, section });
+    ok(res, stats, msg.loaded("Result statistics"));
   },
 };

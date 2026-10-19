@@ -15,15 +15,20 @@ exports.studentController = {
         (0, respond_1.ok)(res, item, messages_1.msg.loaded("Student"));
     },
     async create(req, res) {
-        const created = await (0, student_service_1.createStudent)(req.body, req.user);
-        (0, respond_1.ok)(res, created, messages_1.msg.saved("Student"), 201);
+        const { student, sms } = await (0, student_service_1.createStudent)(req.body, req.user);
+        (0, respond_1.ok)(res, student, (0, student_service_1.studentSaveMessage)("saved", sms), 201);
     },
     async update(req, res) {
-        const updated = await (0, student_service_1.updateStudent)((0, persist_1.routeParam)(req.params.id), req.body, req.user);
-        (0, respond_1.ok)(res, updated, messages_1.msg.updated("Student"));
+        const { student, sms } = await (0, student_service_1.updateStudent)((0, persist_1.routeParam)(req.params.id), req.body, req.user);
+        (0, respond_1.ok)(res, student, (0, student_service_1.studentSaveMessage)("updated", sms));
     },
     async promote(req, res) {
         const result = await (0, student_service_1.promoteStudents)(req.body.ids, req.body.targetClassId, req.body.targetSection, req.user);
         (0, respond_1.ok)(res, result, messages_1.msg.updated("Student promotion"));
+    },
+    async promoteAll(req, res) {
+        const result = await (0, student_service_1.promoteAllStudents)(req.user);
+        const year = result.yearAdvanced ? ` Academic year is ${result.academicYear}.` : "";
+        (0, respond_1.ok)(res, result, `Promoted ${result.promoted} students. ${result.alumni} became alumni. ${result.skipped} stayed in place.${year}`);
     },
 };

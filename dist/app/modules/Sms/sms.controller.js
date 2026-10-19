@@ -11,6 +11,6 @@ exports.smsController = {
     },
     async send(req, res) {
         const result = await (0, sms_service_1.queueSms)(req.body);
-        (0, respond_1.ok)(res, result, `${messages_1.msg.saved("SMS queue")} Gateway is not connected yet.`);
+        (0, respond_1.ok)(res, result, (0, sms_service_1.smsQueueMessage)(result));
     },
 };

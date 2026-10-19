@@ -7,6 +7,7 @@ exports.bookCreateValidation = zod_1.z.object({
     author: zod_1.z.string().optional(),
     isbn: zod_1.z.string().optional(),
     copies: zod_1.z.number().int().positive(),
+    collectedAt: zod_1.z.string().optional().or(zod_1.z.literal("")),
 });
 exports.bookUpdateValidation = exports.bookCreateValidation.partial();
 const objectId = zod_1.z.string().regex(/^[a-fA-F0-9]{24}$/, "Select a valid record");

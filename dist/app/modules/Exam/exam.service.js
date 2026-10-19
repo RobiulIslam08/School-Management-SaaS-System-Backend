@@ -3,6 +3,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.listExams = listExams;
 exports.createExam = createExam;
 exports.publishExam = publishExam;
+exports.updateExam = updateExam;
+exports.deleteExam = deleteExam;
 exports.listGradingRules = listGradingRules;
 exports.createGradingRule = createGradingRule;
 exports.listResults = listResults;
@@ -10,6 +12,9 @@ exports.upsertResult = upsertResult;
 exports.recomputeMerit = recomputeMerit;
 exports.finalGrade = finalGrade;
 exports.exportResults = exportResults;
+exports.getPassList = getPassList;
+exports.getFailList = getFailList;
+exports.getResultStats = getResultStats;
 const ExamType_1 = require("../../../models/ExamType");
 const GradingRule_1 = require("../../../models/GradingRule");
 const Result_1 = require("../../../models/Result");
@@ -34,30 +39,70 @@ async function publishExam(id, isPublished) {
     await exam.save();
     return exam;
 }
+async function updateExam(id, body) {
+    const exam = await ExamType_1.ExamType.findById(id);
+    if (!exam)
+        throw new ApiError_1.ApiError(404, messages_1.msg.notFound("Exam"));
+    const name = body.name?.trim();
+    const code = body.code?.trim();
+    if (!name && !code && body.startDate === undefined && body.endDate === undefined) {
+        throw new ApiError_1.ApiError(400, messages_1.msg.noFields("Exam"));
+    }
+    if (name)
+        exam.name = name;
+    if (code)
+        exam.code = code;
+    if (body.startDate !== undefined)
+        exam.startDate = body.startDate ? new Date(body.startDate) : undefined;
+    if (body.endDate !== undefined)
+        exam.endDate = body.endDate ? new Date(body.endDate) : undefined;
+    await exam.save();
+    return exam;
+}
+async function deleteExam(id) {
+    const examId = id ?? "";
+    const exam = await ExamType_1.ExamType.findById(examId);
+    if (!exam)
+        throw new ApiError_1.ApiError(404, messages_1.msg.notFound("Exam"));
+    const used = await Result_1.Result.countDocuments({ examTypeId: examId, deletedAt: null });
+    if (used) {
+        throw new ApiError_1.ApiError(400, messages_1.msg.updateBlocked("Exam", "Results already exist for this exam."));
+    }
+    await exam.deleteOne();
+    return { id: exam._id };
+}
 async function listGradingRules(academicYear) {
     return GradingRule_1.GradingRule.find(academicYear ? { academicYear } : {}).populate("weights.examTypeId", "name code");
 }
 async function createGradingRule(body) {
-    if (!(0, exam_utils_1.weightsSumTo100)(body.weights)) {
+    const weights = body.weights.filter((item) => item.weight > 0);
+    if (!(0, exam_utils_1.weightsSumTo100)(weights)) {
         throw new ApiError_1.ApiError(400, messages_1.msg.invalid("Grading formula", "Weights must add up to 100."));
     }
     if (body.isDefault && !body.classId) {
         await GradingRule_1.GradingRule.updateMany({ academicYear: body.academicYear, $or: [{ classId: { $exists: false } }, { classId: null }] }, { isDefault: false });
     }
-    return GradingRule_1.GradingRule.create(body);
+    return GradingRule_1.GradingRule.create({ ...body, weights });
 }
 async function listResults(filterInput) {
     const filter = { deletedAt: null };
     if (filterInput.examTypeId)
         filter.examTypeId = filterInput.examTypeId;
-    if (filterInput.studentId)
-        filter.studentId = filterInput.studentId;
     if (filterInput.classId || filterInput.section) {
         const students = await Student_1.Student.find({
             ...(filterInput.classId ? { classId: filterInput.classId } : {}),
             ...(filterInput.section ? { section: filterInput.section } : {}),
         }).select("_id");
-        filter.studentId = { $in: students.map((item) => item._id) };
+        const ids = students.map((item) => String(item._id));
+        if (filterInput.studentId) {
+            filter.studentId = ids.includes(String(filterInput.studentId)) ? filterInput.studentId : { $in: [] };
+        }
+        else {
+            filter.studentId = { $in: ids };
+        }
+    }
+    else if (filterInput.studentId) {
+        filter.studentId = filterInput.studentId;
     }
     const items = await Result_1.Result.find(filter)
         .populate({
@@ -106,21 +151,16 @@ async function upsertResult(input, user) {
         bySubject.set(String(row.subjectId), row);
     }
     const merged = Array.from(bySubject.values());
-    const totalObtained = merged.reduce((sum, row) => sum + (row.obtained ?? 0), 0);
-    const totalFull = merged.reduce((sum, row) => sum + (row.full ?? 0), 0);
-    const gpa = merged.length === 0
-        ? 0
-        : Math.round((merged.reduce((sum, row) => sum + (row.gpa ?? 0), 0) / merged.length) * 100) / 100;
-    const letter = merged.some((row) => row.letter === "F") ? "F" : merged[0]?.letter ?? "";
+    const overall = (0, grading_1.aggregateOverall)(merged, scale);
     const payload = {
         studentId: input.studentId,
         examTypeId: input.examTypeId,
         academicYear: exam.academicYear,
         subjectMarks: merged,
-        totalObtained,
-        totalFull,
-        gpa,
-        letter,
+        totalObtained: overall.totalObtained,
+        totalFull: overall.totalFull,
+        gpa: overall.gpa,
+        letter: overall.letter,
     };
     if (existing) {
         existing.history.push({
@@ -140,15 +180,23 @@ async function upsertResult(input, user) {
     await (0, audit_service_1.writeAudit)({ user, action: "create", entity: "Result", entityId: String(created._id), after: payload });
     return { record: created, created: true };
 }
-async function recomputeMerit(examTypeId) {
+async function recomputeMerit(examTypeId, scope) {
     if (!examTypeId)
         throw new ApiError_1.ApiError(400, messages_1.msg.updateBlocked("Merit list", "Exam id is missing."));
     const exam = await ExamType_1.ExamType.findById(examTypeId);
     if (!exam)
         throw new ApiError_1.ApiError(404, messages_1.msg.notFound("Merit list"));
-    const rule = await GradingRule_1.GradingRule.findOne({ academicYear: exam.academicYear, isDefault: true });
+    const rule = await (0, exam_utils_1.resolveGradingRule)(exam.academicYear, scope?.classId);
     const tieBreak = (rule?.tieBreak ?? ["totalMarks", "gpa", "cq"]);
-    const rows = await Result_1.Result.find({ examTypeId, deletedAt: null });
+    const filter = { examTypeId, deletedAt: null };
+    if (scope?.classId || scope?.section) {
+        const students = await Student_1.Student.find({
+            ...(scope.classId ? { classId: scope.classId } : {}),
+            ...(scope.section ? { section: scope.section } : {}),
+        }).select("_id");
+        filter.studentId = { $in: students.map((item) => item._id) };
+    }
+    const rows = await Result_1.Result.find(filter);
     if (!rows.length) {
         throw new ApiError_1.ApiError(400, messages_1.msg.updateBlocked("Merit list", "No saved marks were found for this exam."));
     }
@@ -164,7 +212,9 @@ async function recomputeMerit(examTypeId) {
     return ranked.map((row, index) => ({ ...row, position: index + 1 }));
 }
 async function finalGrade(studentId, academicYear) {
-    const rule = await GradingRule_1.GradingRule.findOne({ academicYear, isDefault: true });
+    const student = await Student_1.Student.findById(studentId).select("classId");
+    const classId = student?.classId ? String(student.classId) : undefined;
+    const rule = await (0, exam_utils_1.resolveGradingRule)(academicYear, classId);
     if (!rule || !rule.weights.length) {
         throw new ApiError_1.ApiError(400, messages_1.msg.invalid("Final grade", "No default grading formula is saved for this year."));
     }
@@ -175,8 +225,106 @@ async function finalGrade(studentId, academicYear) {
     });
     return { finalGpa: (0, grading_1.weightedFinal)(parts), parts };
 }
-async function exportResults(examTypeId) {
+async function exportResults(examTypeId, scope) {
     if (!examTypeId)
         throw new ApiError_1.ApiError(400, messages_1.msg.notFoundRead("Exam"));
-    return Result_1.Result.find({ examTypeId, deletedAt: null }).populate("studentId", "name studentId").sort({ meritPosition: 1 });
+    const filter = { examTypeId, deletedAt: null };
+    if (scope?.classId || scope?.section) {
+        const students = await Student_1.Student.find({
+            ...(scope.classId ? { classId: scope.classId } : {}),
+            ...(scope.section ? { section: scope.section } : {}),
+        }).select("_id");
+        filter.studentId = { $in: students.map((item) => item._id) };
+    }
+    return Result_1.Result.find(filter)
+        .populate("studentId", "name studentId rollNo section")
+        .populate("subjectMarks.subjectId", "name")
+        .sort({ meritPosition: 1 });
+}
+// -------- Pass / Fail / Stats helpers --------
+async function buildScopedFilter(examTypeId, scope) {
+    const filter = { examTypeId, deletedAt: null };
+    if (scope?.classId || scope?.section) {
+        const students = await Student_1.Student.find({
+            ...(scope?.classId ? { classId: scope.classId } : {}),
+            ...(scope?.section ? { section: scope.section } : {}),
+        }).select("_id");
+        filter.studentId = { $in: students.map((s) => s._id) };
+    }
+    return filter;
+}
+async function getPassList(examTypeId, scope) {
+    if (!examTypeId)
+        throw new ApiError_1.ApiError(400, messages_1.msg.notFoundRead("Exam"));
+    const filter = await buildScopedFilter(examTypeId, scope);
+    const rows = await Result_1.Result.find(filter)
+        .populate({ path: "studentId", select: "name nameBn studentId rollNo section", populate: { path: "classId", select: "name" } })
+        .populate("examTypeId", "name code")
+        .sort({ meritPosition: 1 });
+    // A student passes if gpa > 0 and no subject has gpa = 0
+    return rows.filter((r) => r.gpa > 0 && r.subjectMarks.every((m) => m.gpa > 0));
+}
+async function getFailList(examTypeId, scope) {
+    if (!examTypeId)
+        throw new ApiError_1.ApiError(400, messages_1.msg.notFoundRead("Exam"));
+    const filter = await buildScopedFilter(examTypeId, scope);
+    const rows = await Result_1.Result.find(filter)
+        .populate({ path: "studentId", select: "name nameBn studentId rollNo section", populate: { path: "classId", select: "name" } })
+        .populate("examTypeId", "name code")
+        .populate("subjectMarks.subjectId", "name code")
+        .sort({ meritPosition: 1 });
+    // A student fails if gpa = 0 or any subject gpa = 0
+    return rows
+        .filter((r) => r.gpa === 0 || r.subjectMarks.some((m) => m.gpa === 0))
+        .map((r) => ({
+        ...r.toObject(),
+        failedSubjects: r.subjectMarks.filter((m) => m.gpa === 0).map((m) => m.subjectId),
+    }));
+}
+async function getResultStats(examTypeId, scope) {
+    if (!examTypeId)
+        throw new ApiError_1.ApiError(400, messages_1.msg.notFoundRead("Exam"));
+    const filter = await buildScopedFilter(examTypeId, scope);
+    const rows = await Result_1.Result.find(filter)
+        .populate("subjectMarks.subjectId", "name code")
+        .lean();
+    const total = rows.length;
+    if (total === 0)
+        return { total: 0, passed: 0, failed: 0, passRate: 0, avgGpa: 0, avgPercent: 0, subjectStats: [] };
+    const passed = rows.filter((r) => r.gpa > 0 && r.subjectMarks.every((m) => m.gpa > 0)).length;
+    const failed = total - passed;
+    const avgGpa = rows.reduce((sum, r) => sum + (r.gpa ?? 0), 0) / total;
+    const avgPercent = rows.reduce((sum, r) => {
+        const pct = r.totalFull ? (r.totalObtained / r.totalFull) * 100 : 0;
+        return sum + pct;
+    }, 0) / total;
+    // Subject-wise stats
+    const subjectMap = new Map();
+    for (const row of rows) {
+        for (const mark of row.subjectMarks) {
+            const sub = mark.subjectId;
+            const subId = typeof sub === "object" ? String(sub._id ?? "") : String(sub);
+            const subName = typeof sub === "object" ? (sub.name ?? "") : "";
+            const subCode = typeof sub === "object" ? (sub.code ?? "") : "";
+            if (!subjectMap.has(subId)) {
+                subjectMap.set(subId, { name: subName, code: subCode, totalObtained: 0, totalFull: 0, count: 0, passed: 0 });
+            }
+            const s = subjectMap.get(subId);
+            s.totalObtained += mark.obtained ?? 0;
+            s.totalFull += mark.full ?? 0;
+            s.count += 1;
+            if (mark.gpa > 0)
+                s.passed += 1;
+        }
+    }
+    const subjectStats = Array.from(subjectMap.entries()).map(([id, s]) => ({
+        subjectId: id,
+        name: s.name,
+        code: s.code,
+        avgObtained: s.count ? s.totalObtained / s.count : 0,
+        avgPercent: s.count && s.totalFull ? (s.totalObtained / s.totalFull) * 100 : 0,
+        passRate: s.count ? (s.passed / s.count) * 100 : 0,
+        count: s.count,
+    }));
+    return { total, passed, failed, passRate: (passed / total) * 100, avgGpa, avgPercent, subjectStats };
 }

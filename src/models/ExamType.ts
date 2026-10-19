@@ -1,5 +1,14 @@
 import mongoose, { Schema } from "mongoose";
 
+export interface ExamScheduleItem {
+  subjectId?: mongoose.Types.ObjectId;
+  subjectName?: string;
+  date?: Date;
+  startTime?: string;
+  endTime?: string;
+  venue?: string;
+}
+
 export interface ExamTypeDoc {
   name: string;
   code: string;
@@ -8,7 +17,20 @@ export interface ExamTypeDoc {
   startDate?: Date;
   endDate?: Date;
   isPublished: boolean;
+  schedule?: ExamScheduleItem[];
 }
+
+const scheduleItemSchema = new Schema(
+  {
+    subjectId: { type: Schema.Types.ObjectId, ref: "Subject" },
+    subjectName: { type: String, default: "" },
+    date: { type: Date },
+    startTime: { type: String, default: "" },
+    endTime: { type: String, default: "" },
+    venue: { type: String, default: "" },
+  },
+  { _id: false }
+);
 
 const examSchema = new Schema<ExamTypeDoc>(
   {
@@ -19,6 +41,7 @@ const examSchema = new Schema<ExamTypeDoc>(
     startDate: { type: Date },
     endDate: { type: Date },
     isPublished: { type: Boolean, default: false },
+    schedule: { type: [scheduleItemSchema], default: [] },
   },
   { timestamps: true, collection: "ExamTypes" }
 );

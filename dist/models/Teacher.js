@@ -40,6 +40,9 @@ const teacherSchema = new mongoose_1.Schema({
     name: { type: String, required: true, trim: true },
     email: { type: String, default: "", lowercase: true },
     phone: { type: String, default: "" },
+    photoUrl: { type: String, default: "" },
+    bioBn: { type: String, default: "" },
+    bioEn: { type: String, default: "" },
     designation: { type: String, default: "Teacher" },
     subjects: [{ type: mongoose_1.Schema.Types.ObjectId, ref: "Subject" }],
     classTeacherOf: {
@@ -53,6 +56,7 @@ const teacherSchema = new mongoose_1.Schema({
         other: { type: Number, default: 0 },
     },
     joiningDate: { type: Date },
+    retirementDate: { type: Date },
     isActive: { type: Boolean, default: true },
 }, { timestamps: true });
 teacherSchema.index({ name: 1 });

@@ -15,7 +15,7 @@ async function listRoutine(classId, section) {
         filter.section = section;
     return Routine_1.Routine.find(filter)
         .populate("subjectId", "name code")
-        .populate("teacherId", "name staffId")
+        .populate("teacherId", "name staffId photoUrl")
         .sort({ day: 1, period: 1 });
 }
 async function upsertSlot(body) {

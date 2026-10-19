@@ -25,7 +25,7 @@ async function authenticate(req, _res, next) {
         req.user = {
             id: String(user._id),
             role: user.role,
-            permissions: user.permissions.length ? user.permissions : permissions_1.ROLE_PERMISSIONS[user.role],
+            permissions: (0, permissions_1.effectivePermissions)(user.role, user.permissions),
             name: user.name,
             email: user.email,
         };

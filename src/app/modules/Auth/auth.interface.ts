@@ -7,6 +7,11 @@ export interface PublicUser {
   role: Role;
   permissions: string[];
   totpEnabled: boolean;
+  studentId?: string;
+  nameBn?: string;
+  rollNo?: string;
+  section?: string;
+  classId?: { _id?: string; name?: string } | null;
 }
 
 export interface LoginBody {
@@ -35,6 +40,14 @@ export interface ForgotPasswordResult {
   devCode?: string;
 }
 
+export interface StudentMeta {
+  studentId?: string;
+  nameBn?: string;
+  rollNo?: string;
+  section?: string;
+  classId?: { _id?: string; name?: string } | null;
+}
+
 export interface LoginResult {
   requiresTwoFactor: boolean;
   tempToken: string | null;
@@ -47,5 +60,7 @@ export interface LoginResult {
     totpEnabled: boolean;
     passwordHash: string;
     isActive: boolean;
+    linkedStudentId?: unknown;
   } | null;
+  studentMeta?: StudentMeta;
 }

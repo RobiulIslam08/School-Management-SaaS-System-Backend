@@ -15,7 +15,7 @@ exports.payrollController = {
         (0, respond_1.ok)(res, created, messages_1.msg.saved("Payslip"), 201);
     },
     async pay(req, res) {
-        const item = await (0, payroll_service_1.markPaid)((0, persist_1.routeParam)(req.params.id));
-        (0, respond_1.ok)(res, item, messages_1.msg.updated("Payslip"));
+        const { item, sms } = await (0, payroll_service_1.markPaid)((0, persist_1.routeParam)(req.params.id));
+        (0, respond_1.ok)(res, item, (0, payroll_service_1.payrollPayMessage)(sms));
     },
 };

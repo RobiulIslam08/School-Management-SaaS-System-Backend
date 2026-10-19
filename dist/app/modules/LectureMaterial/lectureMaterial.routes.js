@@ -1,0 +1,16 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.lectureMaterialRouter = void 0;
+const express_1 = require("express");
+const authenticate_1 = require("../../../middleware/authenticate");
+const authorize_1 = require("../../../middleware/authorize");
+const requireFeature_1 = require("../../../middleware/requireFeature");
+const asyncHandler_1 = require("../../../utils/asyncHandler");
+const lectureMaterial_controller_1 = require("./lectureMaterial.controller");
+const router = (0, express_1.Router)();
+router.get("/public/lecture-materials", (0, asyncHandler_1.asyncHandler)(lectureMaterial_controller_1.lectureMaterialController.publicList));
+router.get("/lecture-materials", authenticate_1.authenticate, (0, authorize_1.authorize)("teachers:view"), (0, requireFeature_1.requireFeature)("teachers"), (0, asyncHandler_1.asyncHandler)(lectureMaterial_controller_1.lectureMaterialController.list));
+router.post("/lecture-materials", authenticate_1.authenticate, (0, authorize_1.authorize)("teachers:edit"), (0, requireFeature_1.requireFeature)("teachers"), (0, asyncHandler_1.asyncHandler)(lectureMaterial_controller_1.lectureMaterialController.create));
+router.patch("/lecture-materials/:id", authenticate_1.authenticate, (0, authorize_1.authorize)("teachers:edit"), (0, requireFeature_1.requireFeature)("teachers"), (0, asyncHandler_1.asyncHandler)(lectureMaterial_controller_1.lectureMaterialController.update));
+router.delete("/lecture-materials/:id", authenticate_1.authenticate, (0, authorize_1.authorize)("teachers:edit"), (0, requireFeature_1.requireFeature)("teachers"), (0, asyncHandler_1.asyncHandler)(lectureMaterial_controller_1.lectureMaterialController.remove));
+exports.lectureMaterialRouter = router;

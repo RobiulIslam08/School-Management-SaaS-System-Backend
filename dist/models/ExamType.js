@@ -35,6 +35,14 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ExamType = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
+const scheduleItemSchema = new mongoose_1.Schema({
+    subjectId: { type: mongoose_1.Schema.Types.ObjectId, ref: "Subject" },
+    subjectName: { type: String, default: "" },
+    date: { type: Date },
+    startTime: { type: String, default: "" },
+    endTime: { type: String, default: "" },
+    venue: { type: String, default: "" },
+}, { _id: false });
 const examSchema = new mongoose_1.Schema({
     name: { type: String, required: true },
     code: { type: String, required: true },
@@ -43,6 +51,7 @@ const examSchema = new mongoose_1.Schema({
     startDate: { type: Date },
     endDate: { type: Date },
     isPublished: { type: Boolean, default: false },
+    schedule: { type: [scheduleItemSchema], default: [] },
 }, { timestamps: true, collection: "ExamTypes" });
 examSchema.index({ academicYear: 1, code: 1 }, { unique: true });
 exports.ExamType = mongoose_1.default.model("ExamType", examSchema);

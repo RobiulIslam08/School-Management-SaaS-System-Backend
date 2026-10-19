@@ -16,7 +16,14 @@ async function listBooks() {
     return Operations_1.Book.find().sort({ title: 1 });
 }
 async function createBook(body) {
-    return Operations_1.Book.create({ ...body, available: body.copies });
+    return Operations_1.Book.create({
+        title: body.title,
+        author: body.author ?? "",
+        isbn: body.isbn ?? "",
+        copies: body.copies,
+        available: body.copies,
+        collectedAt: body.collectedAt ? new Date(body.collectedAt) : new Date(),
+    });
 }
 async function updateBook(id, body) {
     const recordId = (0, persist_1.requireId)(id, "Book");
@@ -35,6 +42,9 @@ async function updateBook(id, body) {
         book.author = String(payload.author);
     if (payload.isbn !== undefined)
         book.isbn = String(payload.isbn);
+    if (payload.collectedAt !== undefined) {
+        book.collectedAt = payload.collectedAt ? new Date(String(payload.collectedAt)) : book.collectedAt;
+    }
     if (typeof payload.copies === "number") {
         book.copies = nextCopies;
         book.available = (0, library_utils_1.availableAfterCopyChange)(nextCopies, issued);

@@ -48,6 +48,10 @@ const settingsSchema = new mongoose_1.Schema({
     },
     academicYear: { type: String, default: "2026" },
     smsApiKey: { type: String, default: "" },
+    smsSenderId: { type: String, default: "" },
+    smsAdmissionEnabled: { type: Boolean, default: true },
+    smsAttendanceEnabled: { type: Boolean, default: true },
+    smsPayrollEnabled: { type: Boolean, default: true },
     defaultLanguage: { type: String, enum: ["bn", "en"], default: "bn" },
 }, { timestamps: true, collection: "SchoolSettings" });
 exports.SchoolSettings = mongoose_1.default.model("SchoolSettings", settingsSchema);

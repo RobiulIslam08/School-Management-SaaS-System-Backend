@@ -15,7 +15,7 @@ const subject_utils_1 = require("./subject.utils");
 async function listSubjects(classId) {
     return Subject_1.Subject.find(classId ? { classId } : {})
         .populate("classId", "name code")
-        .populate("teacherId", "name staffId")
+        .populate("teacherId", "name staffId photoUrl")
         .sort({ sortOrder: 1, name: 1 });
 }
 async function createSubject(body) {

@@ -3,6 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.listPublicNotices = void 0;
 exports.publicBranding = publicBranding;
 exports.publicClasses = publicClasses;
 exports.publicAdmission = publicAdmission;
@@ -22,6 +23,8 @@ const Teacher_1 = require("../../../models/Teacher");
 const ApiError_1 = require("../../../utils/ApiError");
 const messages_1 = require("../../../utils/messages");
 const student_service_1 = require("../Student/student.service");
+const notice_service_1 = require("../Notice/notice.service");
+Object.defineProperty(exports, "listPublicNotices", { enumerable: true, get: function () { return notice_service_1.listPublicNotices; } });
 const public_utils_1 = require("./public.utils");
 async function publicBranding() {
     const [settings, pack] = await Promise.all([SchoolSettings_1.SchoolSettings.findOne(), FeaturePackage_1.FeaturePackage.findOne()]);
@@ -29,6 +32,10 @@ async function publicBranding() {
         name: settings?.name ?? "School",
         logoUrl: settings?.logoUrl ?? "",
         motto: settings?.motto ?? "",
+        address: settings?.address ?? "",
+        eiin: settings?.eiin ?? "",
+        establishedYear: settings?.establishedYear ?? null,
+        academicYear: settings?.academicYear ?? "",
         theme: settings?.theme,
         publicAdmission: (0, FeaturePackage_1.normalizeModules)(pack?.modules).publicAdmission,
     };
@@ -39,7 +46,8 @@ async function publicClasses() {
 }
 async function publicAdmission(body) {
     await (0, public_utils_1.requirePublicAdmission)();
-    return (0, student_service_1.createStudent)({ ...body, status: "pending" });
+    const { student } = await (0, student_service_1.createStudent)({ ...body, status: "pending" });
+    return student;
 }
 async function guardianPortal(userId, role, queryStudentId) {
     const user = await User_1.User.findById(userId);
@@ -63,7 +71,8 @@ async function guardianPortal(userId, role, queryStudentId) {
             isPublished: true,
             audience: { $in: ["all", "guardians", "students", "class"] },
         })
-            .sort({ createdAt: -1 })
+            .select("title body refNo issueDate category signatories createdAt audience classId createdByName")
+            .sort({ pinned: -1, createdAt: -1 })
             .limit(20),
     ]);
     const visibleResults = results.filter((item) => {
@@ -85,7 +94,8 @@ async function teacherPortal(userId) {
             .populate("classTeacherOf.classId", "name")
         : null;
     const notices = await Notice_1.Notice.find({ isPublished: true, audience: { $in: ["all", "teachers"] } })
-        .sort({ createdAt: -1 })
+        .select("title body refNo issueDate category signatories createdAt createdByName")
+        .sort({ pinned: -1, createdAt: -1 })
         .limit(10);
     return { teacher, notices };
 }

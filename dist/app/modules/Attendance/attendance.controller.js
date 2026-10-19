@@ -11,7 +11,7 @@ exports.attendanceController = {
     },
     async bulk(req, res) {
         const result = await (0, attendance_service_1.saveAttendanceBulk)({ ...req.body, markedBy: req.user?.id });
-        (0, respond_1.ok)(res, { upserted: result.upsertedCount, modified: result.modifiedCount }, messages_1.msg.saved("Attendance"));
+        (0, respond_1.ok)(res, result, (0, attendance_service_1.attendanceSaveMessage)(result.sms));
     },
     async roster(req, res) {
         const classId = typeof req.query.classId === "string" ? req.query.classId : undefined;

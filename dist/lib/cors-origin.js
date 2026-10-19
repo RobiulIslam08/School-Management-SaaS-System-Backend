@@ -4,7 +4,11 @@ exports.isAllowedOrigin = isAllowedOrigin;
 function isAllowedOrigin(requestOrigin, configuredOrigin) {
     if (!requestOrigin)
         return true;
-    if (!configuredOrigin)
+    const list = (Array.isArray(configuredOrigin) ? configuredOrigin : [configuredOrigin])
+        .flatMap((item) => item.split(","))
+        .map((item) => item.trim())
+        .filter(Boolean);
+    if (!list.length)
         return requestOrigin;
-    return requestOrigin === configuredOrigin ? requestOrigin : false;
+    return list.includes(requestOrigin) ? requestOrigin : false;
 }

@@ -37,6 +37,7 @@ exports.Subject = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
 const subjectSchema = new mongoose_1.Schema({
     name: { type: String, required: true, trim: true },
+    nameBn: { type: String, default: "", trim: true },
     code: { type: String, required: true, trim: true },
     classId: { type: mongoose_1.Schema.Types.ObjectId, ref: "ClassStructure", required: true },
     group: { type: String, enum: ["Science", "Business", "Humanities", "Common"], default: "Common" },

@@ -85,5 +85,26 @@ router.get(
   requireFeature("results"),
   asyncHandler(examController.exportXlsx)
 );
+router.get(
+  "/results/:examTypeId/pass-list",
+  authenticate,
+  authorize("results:view"),
+  requireFeature("results"),
+  asyncHandler(examController.passList)
+);
+router.get(
+  "/results/:examTypeId/fail-list",
+  authenticate,
+  authorize("results:view"),
+  requireFeature("results"),
+  asyncHandler(examController.failList)
+);
+router.get(
+  "/results/:examTypeId/stats",
+  authenticate,
+  authorize("results:view"),
+  requireFeature("results"),
+  asyncHandler(examController.resultStats)
+);
 
 export const examsRouter = router;

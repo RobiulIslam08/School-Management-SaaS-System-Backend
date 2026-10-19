@@ -1,0 +1,18 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.donationRouter = void 0;
+const express_1 = require("express");
+const authenticate_1 = require("../../../middleware/authenticate");
+const authorize_1 = require("../../../middleware/authorize");
+const requireFeature_1 = require("../../../middleware/requireFeature");
+const validate_1 = require("../../../middleware/validate");
+const asyncHandler_1 = require("../../../utils/asyncHandler");
+const donation_controller_1 = require("./donation.controller");
+const donation_validation_1 = require("./donation.validation");
+const router = (0, express_1.Router)();
+router.get("/donations", authenticate_1.authenticate, (0, authorize_1.authorize)("donations:view"), (0, requireFeature_1.requireFeature)("donations"), (0, asyncHandler_1.asyncHandler)(donation_controller_1.donationController.list));
+router.get("/donations/summary", authenticate_1.authenticate, (0, authorize_1.authorize)("donations:view"), (0, requireFeature_1.requireFeature)("donations"), (0, asyncHandler_1.asyncHandler)(donation_controller_1.donationController.summary));
+router.post("/donations", authenticate_1.authenticate, (0, authorize_1.authorize)("donations:create"), (0, requireFeature_1.requireFeature)("donations"), (0, validate_1.validate)(donation_validation_1.donationCreateValidation), (0, asyncHandler_1.asyncHandler)(donation_controller_1.donationController.create));
+router.patch("/donations/:id", authenticate_1.authenticate, (0, authorize_1.authorize)("donations:edit"), (0, requireFeature_1.requireFeature)("donations"), (0, validate_1.validate)(donation_validation_1.donationUpdateValidation), (0, asyncHandler_1.asyncHandler)(donation_controller_1.donationController.update));
+router.delete("/donations/:id", authenticate_1.authenticate, (0, authorize_1.authorize)("donations:delete"), (0, requireFeature_1.requireFeature)("donations"), (0, asyncHandler_1.asyncHandler)(donation_controller_1.donationController.remove));
+exports.donationRouter = router;

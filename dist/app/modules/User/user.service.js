@@ -7,7 +7,6 @@ exports.listStaff = listStaff;
 exports.createStaff = createStaff;
 exports.updateStaff = updateStaff;
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
-const permissions_1 = require("../../../lib/permissions");
 const User_1 = require("../../../models/User");
 const ApiError_1 = require("../../../utils/ApiError");
 const messages_1 = require("../../../utils/messages");
@@ -24,7 +23,7 @@ async function createStaff(body) {
         phone: body.phone,
         passwordHash: await bcryptjs_1.default.hash(body.password, 10),
         role: body.role,
-        permissions: body.permissions ?? permissions_1.ROLE_PERMISSIONS[body.role],
+        permissions: body.permissions?.length ? body.permissions : [],
     });
     return { id: user._id, name: user.name, email: user.email, role: user.role };
 }
@@ -47,7 +46,7 @@ async function updateStaff(id, body, actorId) {
     if (body.role && body.role !== "platform_owner") {
         user.role = body.role;
         if (!body.permissions) {
-            user.permissions = permissions_1.ROLE_PERMISSIONS[body.role];
+            user.permissions = [];
         }
     }
     const { password: _pw, role: _role, ...rest } = body;

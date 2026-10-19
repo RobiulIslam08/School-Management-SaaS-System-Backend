@@ -1,0 +1,16 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.calendarRouter = void 0;
+const express_1 = require("express");
+const authenticate_1 = require("../../../middleware/authenticate");
+const authorize_1 = require("../../../middleware/authorize");
+const requireFeature_1 = require("../../../middleware/requireFeature");
+const asyncHandler_1 = require("../../../utils/asyncHandler");
+const calendar_controller_1 = require("./calendar.controller");
+const router = (0, express_1.Router)();
+router.get("/calendar-events", authenticate_1.authenticate, (0, authorize_1.authorize)("academics:view"), (0, requireFeature_1.requireFeature)("academics"), (0, asyncHandler_1.asyncHandler)(calendar_controller_1.calendarController.list));
+router.post("/calendar-events", authenticate_1.authenticate, (0, authorize_1.authorize)("academics:edit"), (0, requireFeature_1.requireFeature)("academics"), (0, asyncHandler_1.asyncHandler)(calendar_controller_1.calendarController.create));
+router.patch("/calendar-events/:id", authenticate_1.authenticate, (0, authorize_1.authorize)("academics:edit"), (0, requireFeature_1.requireFeature)("academics"), (0, asyncHandler_1.asyncHandler)(calendar_controller_1.calendarController.update));
+router.delete("/calendar-events/:id", authenticate_1.authenticate, (0, authorize_1.authorize)("academics:edit"), (0, requireFeature_1.requireFeature)("academics"), (0, asyncHandler_1.asyncHandler)(calendar_controller_1.calendarController.remove));
+router.get("/public/calendar-events", (0, asyncHandler_1.asyncHandler)(calendar_controller_1.calendarController.publicList));
+exports.calendarRouter = router;

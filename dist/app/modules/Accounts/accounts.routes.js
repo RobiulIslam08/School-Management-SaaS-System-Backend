@@ -1,0 +1,12 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.accountsRouter = void 0;
+const express_1 = require("express");
+const authenticate_1 = require("../../../middleware/authenticate");
+const authorize_1 = require("../../../middleware/authorize");
+const requireFeature_1 = require("../../../middleware/requireFeature");
+const asyncHandler_1 = require("../../../utils/asyncHandler");
+const accounts_controller_1 = require("./accounts.controller");
+const router = (0, express_1.Router)();
+router.get("/accounts/summary", authenticate_1.authenticate, (0, authorize_1.authorize)("accounts:view"), (0, requireFeature_1.requireFeature)("accounts"), (0, asyncHandler_1.asyncHandler)(accounts_controller_1.accountsController.summary));
+exports.accountsRouter = router;

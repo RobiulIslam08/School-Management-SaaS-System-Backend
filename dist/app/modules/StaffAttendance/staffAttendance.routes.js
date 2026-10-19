@@ -1,0 +1,17 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.staffAttendanceRouter = void 0;
+const express_1 = require("express");
+const authenticate_1 = require("../../../middleware/authenticate");
+const authorize_1 = require("../../../middleware/authorize");
+const requireFeature_1 = require("../../../middleware/requireFeature");
+const validate_1 = require("../../../middleware/validate");
+const asyncHandler_1 = require("../../../utils/asyncHandler");
+const staffAttendance_controller_1 = require("./staffAttendance.controller");
+const staffAttendance_validation_1 = require("./staffAttendance.validation");
+const router = (0, express_1.Router)();
+router.get("/staff-attendance", authenticate_1.authenticate, (0, authorize_1.authorize)("staffAttendance:view"), (0, requireFeature_1.requireFeature)("staffAttendance"), (0, asyncHandler_1.asyncHandler)(staffAttendance_controller_1.staffAttendanceController.list));
+router.get("/staff-attendance/roster", authenticate_1.authenticate, (0, authorize_1.authorize)("staffAttendance:view"), (0, requireFeature_1.requireFeature)("staffAttendance"), (0, asyncHandler_1.asyncHandler)(staffAttendance_controller_1.staffAttendanceController.roster));
+router.get("/staff-attendance/dates", authenticate_1.authenticate, (0, authorize_1.authorize)("staffAttendance:view"), (0, requireFeature_1.requireFeature)("staffAttendance"), (0, asyncHandler_1.asyncHandler)(staffAttendance_controller_1.staffAttendanceController.dates));
+router.post("/staff-attendance/bulk", authenticate_1.authenticate, (0, authorize_1.authorize)("staffAttendance:create"), (0, requireFeature_1.requireFeature)("staffAttendance"), (0, validate_1.validate)(staffAttendance_validation_1.staffAttendanceBulkValidation), (0, asyncHandler_1.asyncHandler)(staffAttendance_controller_1.staffAttendanceController.bulk));
+exports.staffAttendanceRouter = router;

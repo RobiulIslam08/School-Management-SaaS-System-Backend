@@ -55,6 +55,7 @@ const bookSchema = new mongoose_1.Schema({
     isbn: { type: String, default: "" },
     copies: { type: Number, default: 1 },
     available: { type: Number, default: 1 },
+    collectedAt: { type: Date, default: Date.now },
 }, { timestamps: true });
 exports.Book = mongoose_1.default.model("Book", bookSchema);
 const bookIssueSchema = new mongoose_1.Schema({

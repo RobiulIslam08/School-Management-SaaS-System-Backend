@@ -33,8 +33,13 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SmsLog = exports.Notice = void 0;
+exports.SmsLog = exports.Notice = exports.NOTICE_CATEGORIES = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
+exports.NOTICE_CATEGORIES = ["general", "exam", "holiday", "fee", "admission", "other"];
+const signatorySchema = new mongoose_1.Schema({
+    name: { type: String, default: "" },
+    designation: { type: String, default: "" },
+}, { _id: false });
 const noticeSchema = new mongoose_1.Schema({
     title: { type: String, required: true },
     body: { type: String, required: true },
@@ -45,7 +50,20 @@ const noticeSchema = new mongoose_1.Schema({
     },
     classId: { type: mongoose_1.Schema.Types.ObjectId, ref: "ClassStructure" },
     isPublished: { type: Boolean, default: true },
+    refNo: { type: String, default: "" },
+    issueDate: { type: Date },
+    category: {
+        type: String,
+        enum: exports.NOTICE_CATEGORIES,
+        default: "general",
+    },
+    signatories: { type: [signatorySchema], default: [] },
+    showOnWebsite: { type: Boolean, default: false },
+    pinned: { type: Boolean, default: false },
+    createdByName: { type: String, default: "" },
 }, { timestamps: true });
+noticeSchema.index({ isPublished: 1, showOnWebsite: 1, pinned: -1, createdAt: -1 });
+noticeSchema.index({ refNo: 1 });
 exports.Notice = mongoose_1.default.model("Notice", noticeSchema);
 const smsLogSchema = new mongoose_1.Schema({
     to: { type: String, required: true },
@@ -53,5 +71,6 @@ const smsLogSchema = new mongoose_1.Schema({
     body: { type: String, required: true },
     status: { type: String, enum: ["queued", "sent", "failed"], default: "queued" },
     audience: { type: String, default: "" },
+    error: { type: String, default: "" },
 }, { timestamps: true, collection: "SMSLogs" });
 exports.SmsLog = mongoose_1.default.model("SmsLog", smsLogSchema);

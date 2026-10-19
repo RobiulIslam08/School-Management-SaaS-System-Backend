@@ -22,7 +22,7 @@ export const authController = {
       return;
     }
     if (!result.user) throw new ApiError(401, msg.loginFailed);
-    const user = attachAuthCookies(res, result.user);
+    const user = attachAuthCookies(res, result.user, result.studentMeta);
     ok(res, { requiresTwoFactor: false, user }, msg.signedIn);
   },
 

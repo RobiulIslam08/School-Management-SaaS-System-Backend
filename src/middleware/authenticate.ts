@@ -18,12 +18,27 @@ export async function authenticate(req: Request, _res: Response, next: NextFunct
       next(new ApiError(401, "Authentication required"));
       return;
     }
+    let studentMeta: { studentId?: string; nameBn?: string; rollNo?: string; section?: string; classId?: unknown } = {};
+    if (user.linkedStudentId) {
+      const { Student } = await import("../models/Student");
+      const student = await Student.findById(user.linkedStudentId).populate("classId", "name").lean();
+      if (student) {
+        studentMeta = {
+          studentId: student.studentId,
+          nameBn: student.nameBn,
+          rollNo: student.rollNo,
+          section: student.section,
+          classId: student.classId,
+        };
+      }
+    }
     req.user = {
       id: String(user._id),
       role: user.role,
       permissions: effectivePermissions(user.role, user.permissions),
       name: user.name,
       email: user.email,
+      ...studentMeta,
     };
     next();
   } catch {

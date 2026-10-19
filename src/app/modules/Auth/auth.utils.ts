@@ -55,6 +55,11 @@ export function toPublicUser(user: {
   role: Role;
   permissions: string[];
   totpEnabled: boolean;
+  studentId?: string;
+  nameBn?: string;
+  rollNo?: string;
+  section?: string;
+  classId?: { _id?: string; name?: string } | null;
 }): PublicUser {
   return {
     id: user.id,
@@ -63,10 +68,25 @@ export function toPublicUser(user: {
     role: user.role,
     permissions: effectivePermissions(user.role, user.permissions),
     totpEnabled: user.totpEnabled,
+    studentId: user.studentId,
+    nameBn: user.nameBn,
+    rollNo: user.rollNo,
+    section: user.section,
+    classId: user.classId,
   };
 }
 
-export function attachAuthCookies(res: Response, user: InstanceType<typeof User>): PublicUser {
+export function attachAuthCookies(
+  res: Response,
+  user: InstanceType<typeof User>,
+  studentMeta?: {
+    studentId?: string;
+    nameBn?: string;
+    rollNo?: string;
+    section?: string;
+    classId?: { _id?: string; name?: string } | null;
+  }
+): PublicUser {
   const safe = toPublicUser({
     id: String(user._id),
     name: user.name,
@@ -74,6 +94,7 @@ export function attachAuthCookies(res: Response, user: InstanceType<typeof User>
     role: user.role,
     permissions: user.permissions,
     totpEnabled: user.totpEnabled,
+    ...studentMeta,
   });
   const tokens = tokensFor(safe.id);
   setAuthCookies(res, tokens.accessToken, tokens.refreshToken);

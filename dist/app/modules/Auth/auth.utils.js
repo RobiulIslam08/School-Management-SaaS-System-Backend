@@ -44,10 +44,10 @@ function isEligibleForPortal(role, ownerPortal) {
     return ownerPortal ? role === "platform_owner" : role !== "platform_owner";
 }
 function signAccess(userId) {
-    return jsonwebtoken_1.default.sign({ sub: userId }, env_1.env.jwtSecret, { expiresIn: "15m" });
+    return jsonwebtoken_1.default.sign({ sub: userId }, env_1.env.jwtSecret, { expiresIn: Math.floor(cookies_1.ACCESS_TOKEN_MS / 1000) });
 }
 function signRefresh(userId) {
-    return jsonwebtoken_1.default.sign({ sub: userId }, env_1.env.jwtRefreshSecret, { expiresIn: "7d" });
+    return jsonwebtoken_1.default.sign({ sub: userId }, env_1.env.jwtRefreshSecret, { expiresIn: Math.floor(cookies_1.REFRESH_TOKEN_MS / 1000) });
 }
 function tokensFor(userId) {
     return { accessToken: signAccess(userId), refreshToken: signRefresh(userId) };
@@ -58,7 +58,7 @@ function toPublicUser(user) {
         name: user.name,
         email: user.email,
         role: user.role,
-        permissions: user.permissions.length ? user.permissions : permissions_1.ROLE_PERMISSIONS[user.role],
+        permissions: (0, permissions_1.effectivePermissions)(user.role, user.permissions),
         totpEnabled: user.totpEnabled,
     };
 }

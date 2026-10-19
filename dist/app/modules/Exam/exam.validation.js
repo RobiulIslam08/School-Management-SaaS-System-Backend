@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resultSaveValidation = exports.gradingRuleValidation = exports.examCreateValidation = void 0;
+exports.resultSaveValidation = exports.gradingRuleValidation = exports.examUpdateValidation = exports.examCreateValidation = void 0;
 const zod_1 = require("zod");
 exports.examCreateValidation = zod_1.z.object({
     name: zod_1.z.string().min(1, "Exam name is required"),
@@ -9,6 +9,12 @@ exports.examCreateValidation = zod_1.z.object({
     academicYear: zod_1.z.string(),
     startDate: zod_1.z.string().optional(),
     endDate: zod_1.z.string().optional(),
+});
+exports.examUpdateValidation = zod_1.z.object({
+    name: zod_1.z.string().min(1).optional(),
+    code: zod_1.z.string().min(1).optional(),
+    startDate: zod_1.z.string().optional(),
+    endDate: zod_1.z.string().optional().nullable(),
 });
 exports.gradingRuleValidation = zod_1.z.object({
     name: zod_1.z.string(),

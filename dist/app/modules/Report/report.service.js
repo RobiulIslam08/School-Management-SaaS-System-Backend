@@ -120,7 +120,10 @@ async function dashboard() {
             .sort({ startDate: 1 })
             .limit(5),
         Notice_1.Notice.find({ isPublished: true }).sort({ createdAt: -1 }).limit(5).select("title createdAt"),
-        Result_1.Result.find({ deletedAt: null, academicYear: year }).sort({ gpa: -1 }).limit(5).populate("studentId", "name studentId"),
+        Result_1.Result.find({ deletedAt: null, academicYear: year })
+            .sort({ gpa: -1 })
+            .limit(40)
+            .populate("studentId", "name studentId"),
     ]);
     const byDate = new Map();
     for (const day of days)
@@ -146,7 +149,7 @@ async function dashboard() {
                 type: "payment",
                 title: student?.name ?? item.title,
                 at: item.updatedAt.toISOString(),
-                href: "/fees",
+                href: "/fees/collected",
             };
         }),
         ...recentNotices.map((item) => ({
@@ -201,13 +204,11 @@ async function dashboard() {
                 href: "/notices",
             })),
         ].slice(0, 8),
-        topPerformers: topResults
-            .map((row) => {
+        topPerformers: (0, report_dashboard_utils_1.uniqueTopPerformers)(topResults.map((row) => {
             const student = row.studentId;
             if (!student?._id)
                 return null;
             return { id: String(student._id), name: student.name ?? "", gpa: row.gpa, studentId: student.studentId ?? "" };
-        })
-            .filter((item) => Boolean(item)),
+        })),
     };
 }

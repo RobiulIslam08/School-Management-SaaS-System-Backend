@@ -1,0 +1,15 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.seatPlanRouter = void 0;
+const express_1 = require("express");
+const authenticate_1 = require("../../../middleware/authenticate");
+const authorize_1 = require("../../../middleware/authorize");
+const requireFeature_1 = require("../../../middleware/requireFeature");
+const asyncHandler_1 = require("../../../utils/asyncHandler");
+const seatPlan_controller_1 = require("./seatPlan.controller");
+const router = (0, express_1.Router)();
+router.get("/seat-plans/:examId", authenticate_1.authenticate, (0, authorize_1.authorize)("exams:view"), (0, requireFeature_1.requireFeature)("exams"), (0, asyncHandler_1.asyncHandler)(seatPlan_controller_1.seatPlanController.get));
+router.post("/seat-plans/generate", authenticate_1.authenticate, (0, authorize_1.authorize)("exams:edit"), (0, requireFeature_1.requireFeature)("exams"), (0, asyncHandler_1.asyncHandler)(seatPlan_controller_1.seatPlanController.generate));
+router.patch("/seat-plans/:id", authenticate_1.authenticate, (0, authorize_1.authorize)("exams:edit"), (0, requireFeature_1.requireFeature)("exams"), (0, asyncHandler_1.asyncHandler)(seatPlan_controller_1.seatPlanController.update));
+router.delete("/seat-plans/:id", authenticate_1.authenticate, (0, authorize_1.authorize)("exams:delete"), (0, requireFeature_1.requireFeature)("exams"), (0, asyncHandler_1.asyncHandler)(seatPlan_controller_1.seatPlanController.remove));
+exports.seatPlanRouter = router;

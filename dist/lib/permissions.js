@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ROLE_PERMISSIONS = exports.ROLES = void 0;
 exports.hasPermission = hasPermission;
+exports.effectivePermissions = effectivePermissions;
 exports.ROLES = [
     "platform_owner",
     "school_admin",
@@ -16,9 +17,13 @@ const ALL_MODULES = [
     "teachers",
     "academics",
     "attendance",
+    "staffAttendance",
     "exams",
     "results",
     "fees",
+    "expenses",
+    "donations",
+    "accounts",
     "sms",
     "notices",
     "payroll",
@@ -29,6 +34,7 @@ const ALL_MODULES = [
     "hostel",
     "idCards",
     "certificates",
+    "website",
     "users",
     "owner",
 ];
@@ -48,13 +54,14 @@ exports.ROLE_PERMISSIONS = {
     platform_owner: ALL_MODULES.flatMap((module) => allActions(module)),
     school_admin: ALL_MODULES.filter((module) => module !== "owner").flatMap((module) => allActions(module)),
     teacher: [
-        ...expand(["students", "academics", "attendance", "exams", "results", "notices", "talent", "certificates"], ["view"]),
-        ...expand(["attendance", "exams"], ["create", "edit"]),
-        ...expand(["results"], ["create", "edit"]),
+        ...expand(["students", "academics", "exams", "notices", "talent", "certificates"], ["view"]),
+        ...expand(["attendance"], ["view", "create", "edit"]),
+        ...expand(["results"], ["view", "create", "edit", "approve"]),
     ],
     accountant: [
-        ...expand(["fees", "payroll", "reports", "students"], ["view"]),
-        ...expand(["fees", "payroll"], ["create", "edit", "delete"]),
+        ...expand(["students", "accounts", "reports", "notices"], ["view"]),
+        ...expand(["fees", "payroll", "expenses", "donations"], ["view", "create", "edit", "delete"]),
+        ...expand(["payroll"], ["approve"]),
     ],
     guardian: expand(["results", "fees", "notices", "attendance", "students"], ["view"]),
 };
@@ -65,4 +72,14 @@ function hasPermission(role, permissions, needed) {
         return true;
     const [mod] = needed.split(":");
     return permissions.includes(`${mod}:*`);
+}
+/**
+ * Empty custom → live role defaults.
+ * Non-empty custom → admin override only (no union with role defaults).
+ */
+function effectivePermissions(role, custom = []) {
+    const rolePerms = exports.ROLE_PERMISSIONS[role] ?? [];
+    if (!custom.length)
+        return [...rolePerms];
+    return [...custom];
 }

@@ -6,6 +6,11 @@ export interface AuthUser {
   permissions: string[];
   name: string;
   email: string;
+  studentId?: string;
+  nameBn?: string;
+  rollNo?: string;
+  section?: string;
+  classId?: unknown;
 }
 
 declare global {

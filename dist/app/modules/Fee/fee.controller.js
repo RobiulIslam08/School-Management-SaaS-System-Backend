@@ -27,6 +27,10 @@ exports.feeController = {
         const ledger = await (0, fee_service_1.addPayment)((0, persist_1.routeParam)(req.params.id), req.body, req.user);
         (0, respond_1.ok)(res, ledger, messages_1.msg.saved("Payment"));
     },
+    async payBatch(req, res) {
+        const receipt = await (0, fee_service_1.addPayments)(req.body, req.user);
+        (0, respond_1.ok)(res, receipt, messages_1.msg.saved("Payment"), 201);
+    },
     async summary(_req, res) {
         (0, respond_1.ok)(res, await (0, fee_service_1.feeSummary)(), messages_1.msg.loaded("Fee summary"));
     },

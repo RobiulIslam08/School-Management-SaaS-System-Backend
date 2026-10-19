@@ -50,7 +50,7 @@ function createApp() {
     }));
     app.use((0, cors_1.default)({
         origin: (origin, callback) => {
-            const allowed = (0, cors_origin_1.isAllowedOrigin)(origin, env_1.env.frontendOrigin);
+            const allowed = (0, cors_origin_1.isAllowedOrigin)(origin, [env_1.env.frontendOrigin, env_1.env.publicOrigin]);
             callback(null, allowed);
         },
         credentials: true,
@@ -61,7 +61,7 @@ function createApp() {
             next();
             return;
         }
-        express_1.default.json({ limit: "2mb" })(req, res, next);
+        express_1.default.json({ limit: "15mb" })(req, res, next);
     });
     app.use((0, cookie_parser_1.default)());
     app.use((0, morgan_1.default)(env_1.env.nodeEnv === "development" ? "dev" : "combined"));

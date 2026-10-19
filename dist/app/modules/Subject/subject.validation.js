@@ -10,6 +10,7 @@ const marks = zod_1.z.object({
 });
 exports.subjectCreateValidation = zod_1.z.object({
     name: zod_1.z.string().min(1, "Subject name is required"),
+    nameBn: zod_1.z.string().optional(),
     code: zod_1.z.string().min(1, "Subject code is required"),
     classId: zod_1.z.string().min(1),
     group: zod_1.z.enum(["Science", "Business", "Humanities", "Common"]).optional(),

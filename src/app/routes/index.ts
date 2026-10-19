@@ -25,6 +25,12 @@ import { teachersRouter } from "../modules/Teacher/teacher.routes";
 import { transportRouter } from "../modules/Transport/transport.routes";
 import { usersRouter } from "../modules/User/user.routes";
 import { websiteRouter } from "../modules/Website/website.routes";
+import { calendarRouter } from "../modules/Calendar/calendar.routes";
+import { admissionExamRouter } from "../modules/AdmissionExam/admissionExam.routes";
+import { seatPlanRouter } from "../modules/SeatPlan/seatPlan.routes";
+import { lectureMaterialRouter } from "../modules/LectureMaterial/lectureMaterial.routes";
+import { trainingRouter } from "../modules/Training/training.routes";
+import { timeAttendanceRouter } from "../modules/TimeAttendance/timeAttendance.routes";
 
 export const apiRouter = Router();
 
@@ -54,3 +60,9 @@ apiRouter.use(hostelRouter);
 apiRouter.use(reportsRouter);
 apiRouter.use(publicRouter);
 apiRouter.use(websiteRouter);
+apiRouter.use(calendarRouter);
+apiRouter.use(admissionExamRouter);
+apiRouter.use(seatPlanRouter);
+apiRouter.use(lectureMaterialRouter);
+apiRouter.use(trainingRouter);
+apiRouter.use(timeAttendanceRouter);

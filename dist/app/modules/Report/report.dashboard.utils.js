@@ -4,13 +4,18 @@ exports.monthRange = monthRange;
 exports.isoDate = isoDate;
 exports.trendPct = trendPct;
 exports.lastDays = lastDays;
+exports.uniqueTopPerformers = uniqueTopPerformers;
 function monthRange(offset = 0, from = new Date()) {
     const start = new Date(from.getFullYear(), from.getMonth() + offset, 1);
     const end = new Date(from.getFullYear(), from.getMonth() + offset + 1, 1);
     return { start, end };
 }
+/** Local calendar YYYY-MM-DD so Bangladesh midnight does not land on the previous UTC day. */
 function isoDate(value = new Date()) {
-    return value.toISOString().slice(0, 10);
+    const y = value.getFullYear();
+    const m = String(value.getMonth() + 1).padStart(2, "0");
+    const d = String(value.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
 }
 function trendPct(current, previous) {
     if (previous <= 0)
@@ -23,4 +28,18 @@ function lastDays(count, from = new Date()) {
         day.setDate(from.getDate() - (count - 1 - index));
         return isoDate(day);
     });
+}
+/** Keep the first (highest GPA) row per student, then cap the list. */
+function uniqueTopPerformers(rows, limit = 5) {
+    const seen = new Set();
+    const unique = [];
+    for (const row of rows) {
+        if (!row?.id || seen.has(row.id))
+            continue;
+        seen.add(row.id);
+        unique.push(row);
+        if (unique.length >= limit)
+            break;
+    }
+    return unique;
 }

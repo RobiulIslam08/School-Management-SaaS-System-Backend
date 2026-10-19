@@ -3,14 +3,27 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.publicController = void 0;
 const messages_1 = require("../../../utils/messages");
 const respond_1 = require("../../../utils/respond");
+const persist_1 = require("../../../utils/persist");
+const notice_service_1 = require("../Notice/notice.service");
 const public_service_1 = require("./public.service");
 exports.publicController = {
     async branding(_req, res) {
+        res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
         (0, respond_1.ok)(res, await (0, public_service_1.publicBranding)(), messages_1.msg.loaded("School branding"));
     },
     async classes(_req, res) {
+        res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
         const items = await (0, public_service_1.publicClasses)();
         (0, respond_1.ok)(res, items, messages_1.msg.loaded("Admission classes", items.length));
+    },
+    async notices(_req, res) {
+        res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
+        const items = await (0, public_service_1.listPublicNotices)();
+        (0, respond_1.ok)(res, items, messages_1.msg.loaded("Notices", items.length));
+    },
+    async notice(req, res) {
+        res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
+        (0, respond_1.ok)(res, await (0, notice_service_1.getPublicNotice)((0, persist_1.routeParam)(req.params.id)), messages_1.msg.loaded("Notice"));
     },
     async apply(req, res) {
         const created = await (0, public_service_1.publicAdmission)(req.body);

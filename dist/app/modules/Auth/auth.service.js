@@ -49,12 +49,22 @@ const env_1 = require("../../../config/env");
 const totp_1 = require("../../../lib/totp");
 const PasswordReset_1 = require("../../../models/PasswordReset");
 const User_1 = require("../../../models/User");
+const Student_1 = require("../../../models/Student");
 const audit_service_1 = require("../../../services/audit.service");
 const ApiError_1 = require("../../../utils/ApiError");
 const messages_1 = require("../../../utils/messages");
 const auth_utils_1 = require("./auth.utils");
-async function loginWithPassword(email, password, ownerOnly) {
-    const user = await User_1.User.findOne({ email: email.toLowerCase() });
+async function loginWithPassword(identifier, password, ownerOnly) {
+    const normalized = (identifier || "").toLowerCase().trim();
+    let user = await User_1.User.findOne({
+        $or: [{ email: normalized }, { phone: normalized }],
+    });
+    if (!user && !ownerOnly) {
+        const student = await Student_1.Student.findOne({ studentId: normalized });
+        if (student) {
+            user = await User_1.User.findOne({ linkedStudentId: student._id });
+        }
+    }
     if (!user || !user.isActive) {
         throw new ApiError_1.ApiError(401, messages_1.msg.loginFailed);
     }
