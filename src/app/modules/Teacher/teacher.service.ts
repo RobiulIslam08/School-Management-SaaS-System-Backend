@@ -1,5 +1,6 @@
 import { Teacher } from "../../../models/Teacher";
 import { updateDocument } from "../../../utils/persist";
+import { invalidatePublicSiteCache } from "../Website/website.service";
 import { nextStaffId } from "./teacher.utils";
 
 export async function listTeachers(q?: string) {
@@ -12,9 +13,13 @@ export async function listTeachers(q?: string) {
 export async function createTeacher(body: Record<string, unknown>) {
   const count = await Teacher.countDocuments();
   const staffId = String(body.staffId || (await nextStaffId(count)));
-  return Teacher.create({ ...body, staffId });
+  const teacher = await Teacher.create({ ...body, staffId });
+  invalidatePublicSiteCache();
+  return teacher;
 }
 
 export async function updateTeacher(id: string | undefined, body: unknown) {
-  return updateDocument(Teacher, id, body, "Teacher");
+  const result = await updateDocument(Teacher, id, body, "Teacher");
+  invalidatePublicSiteCache();
+  return result;
 }

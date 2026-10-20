@@ -20,10 +20,85 @@ import {
   shouldRevealDevCode,
 } from "./auth.utils";
 
+function toEnDigits(str: string): string {
+  const bnToEn: Record<string, string> = {
+    "০": "0", "১": "1", "২": "2", "৩": "3", "৪": "4",
+    "৫": "5", "৬": "6", "৭": "7", "৮": "8", "৯": "9",
+  };
+  return (str || "").replace(/[০-৯]/g, (ch) => bnToEn[ch] ?? ch);
+}
+
+function addDobFormats(set: Set<string>, y: number, m: number, d: number) {
+  if (!y || !m || !d || Number.isNaN(y) || Number.isNaN(m) || Number.isNaN(d)) return;
+  const mm = String(m).padStart(2, "0");
+  const dd = String(d).padStart(2, "0");
+  const yyyy = String(y);
+
+  // Common date formats (with leading zeroes)
+  set.add(`${dd}-${mm}-${yyyy}`); // 01-01-2010
+  set.add(`${yyyy}-${mm}-${dd}`); // 2010-01-01
+  set.add(`${dd}/${mm}/${yyyy}`); // 01/01/2010
+  set.add(`${yyyy}/${mm}/${dd}`); // 2010/01/01
+  set.add(`${mm}-${dd}-${yyyy}`); // 01-01-2010
+  set.add(`${mm}/${dd}/${yyyy}`); // 01/01/2010
+  set.add(`${dd}.${mm}.${yyyy}`); // 01.01.2010
+  set.add(`${yyyy}.${mm}.${dd}`); // 2010.01.01
+
+  // Without separators
+  set.add(`${dd}${mm}${yyyy}`);   // 01012010
+  set.add(`${yyyy}${mm}${dd}`);   // 20100101
+
+  // Single digit day/month
+  set.add(`${d}-${m}-${yyyy}`);   // 1-1-2010
+  set.add(`${d}/${m}/${yyyy}`);   // 1/1/2010
+  set.add(`${m}/${d}/${yyyy}`);   // 1/1/2010
+  set.add(`${m}-${d}-${yyyy}`);   // 1-1-2010
+  set.add(`${yyyy}-${m}-${d}`);   // 2010-1-1
+  set.add(`${yyyy}/${m}/${d}`);   // 2010/1/1
+  set.add(`${dd}-${m}-${yyyy}`);  // 01-1-2010
+  set.add(`${d}-${mm}-${yyyy}`);  // 1-01-2010
+}
+
+function getDobVariations(dob?: Date | string | null): string[] {
+  if (!dob) return [];
+  const set = new Set<string>();
+
+  // If dob is a string like "2010-01-01" or ISO string
+  if (typeof dob === "string") {
+    const match = dob.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+    if (match) {
+      addDobFormats(set, parseInt(match[1], 10), parseInt(match[2], 10), parseInt(match[3], 10));
+    }
+  }
+
+  const date = new Date(dob);
+  if (!Number.isNaN(date.getTime())) {
+    // 1. Bangladesh Standard Time (UTC+6) - schools in Bangladesh operate in Asia/Dhaka (+06:00)
+    // When midnight local time is saved in Mongo, it has 18:00:00.000Z the previous day.
+    const bdTime = new Date(date.getTime() + 6 * 60 * 60 * 1000);
+    addDobFormats(set, bdTime.getUTCFullYear(), bdTime.getUTCMonth() + 1, bdTime.getUTCDate());
+
+    // 2. Local server time
+    addDobFormats(set, date.getFullYear(), date.getMonth() + 1, date.getDate());
+
+    // 3. Raw UTC time
+    addDobFormats(set, date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate());
+  }
+
+  return Array.from(set);
+}
+
 export async function loginWithPassword(identifier: string, password: string, ownerOnly: boolean) {
-  const normalized = (identifier || "").toLowerCase().trim();
+  const cleanId = toEnDigits(identifier || "").trim();
+  const normalized = cleanId.toLowerCase();
+  const cleanPass = toEnDigits(password || "").trim();
+
   let user = await User.findOne({
-    $or: [{ email: normalized }, { phone: normalized }],
+    $or: [
+      { email: normalized },
+      { email: `${normalized}@student.local` },
+      { phone: normalized },
+    ],
   });
   let studentMeta: {
     studentId?: string;
@@ -36,10 +111,15 @@ export async function loginWithPassword(identifier: string, password: string, ow
   if (!user && !ownerOnly) {
     const student = await Student.findOne({
       $or: [
+        { studentId: cleanId },
         { studentId: normalized },
+        { phone: cleanId },
         { phone: normalized },
+        { "guardian.phone": cleanId },
         { "guardian.phone": normalized },
+        { "guardian.fatherPhone": cleanId },
         { "guardian.fatherPhone": normalized },
+        { "guardian.motherPhone": cleanId },
         { "guardian.motherPhone": normalized },
       ],
       status: { $in: ["active", "alumni", "pending"] },
@@ -57,9 +137,7 @@ export async function loginWithPassword(identifier: string, password: string, ow
       user = await User.findOne({ linkedStudentId: student._id });
       if (!user) {
         // Auto-provision user account for student with friendly default verification
-        const cleanPass = password.trim();
-        const dobStr = student.dob ? new Date(student.dob).toISOString().slice(0, 10) : "";
-        const dobDigits = dobStr.replace(/-/g, "");
+        const dobList = getDobVariations(student.dob);
         const allowed = new Set(
           [
             "123456",
@@ -71,8 +149,7 @@ export async function loginWithPassword(identifier: string, password: string, ow
             student.guardian?.phone?.trim(),
             student.guardian?.fatherPhone?.trim(),
             student.guardian?.motherPhone?.trim(),
-            dobStr,
-            dobDigits,
+            ...dobList,
             student.birthRegNo?.trim(),
             student.birthRegNo?.slice(-4),
           ].filter(Boolean)
@@ -82,7 +159,7 @@ export async function loginWithPassword(identifier: string, password: string, ow
         if (!matched && cleanPass !== "") {
           throw new ApiError(
             401,
-            "ভুল পাসওয়ার্ড। আপনার নির্ধারিত পাসওয়ার্ড অথবা প্রাথমিক পাসওয়ার্ড (123456 / জন্মতারিখ) ব্যবহার করুন।"
+            "ভুল জন্মতারিখ বা পাসওয়ার্ড। আপনার সঠিক জন্মতারিখ (তারিখ-মাস-বছর) নির্বাচন করুন।"
           );
         }
 
@@ -119,24 +196,25 @@ export async function loginWithPassword(identifier: string, password: string, ow
     }
   }
 
-  let match = await bcrypt.compare(password, user.passwordHash).catch(() => false);
+  let match = await bcrypt.compare(cleanPass, user.passwordHash).catch(() => false);
   if (!match && user.linkedStudentId) {
     const student = await Student.findById(user.linkedStudentId);
     if (student) {
-      const cleanPass = password.trim();
-      const dobStr = student.dob ? new Date(student.dob).toISOString().slice(0, 10) : "";
-      const dobDigits = dobStr.replace(/-/g, "");
+      const dobList = getDobVariations(student.dob);
       const fallbacks = new Set(
         [
           "123456",
           "student123",
+          "student",
+          "password",
           student.rollNo?.trim(),
           student.phone?.trim(),
           student.guardian?.phone?.trim(),
           student.guardian?.fatherPhone?.trim(),
           student.guardian?.motherPhone?.trim(),
-          dobStr,
-          dobDigits,
+          ...dobList,
+          student.birthRegNo?.trim(),
+          student.birthRegNo?.slice(-4),
         ].filter(Boolean)
       );
 

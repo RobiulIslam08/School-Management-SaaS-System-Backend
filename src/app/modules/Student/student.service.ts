@@ -163,28 +163,125 @@ export async function promoteStudents(
   ids: string[],
   targetClassId: string,
   targetSection: string,
+  targetAcademicYear?: string,
   user?: AuthUser
 ) {
   if (!ids?.length) {
     throw new ApiError(400, msg.updateBlocked("Student", "No student ids were sent."));
   }
-  const result = await Student.updateMany(
-    { _id: { $in: ids } },
-    { $set: { classId: targetClassId, section: targetSection } }
-  );
-  if (!result.matchedCount) {
+  const students = await Student.find({ _id: { $in: ids } }).populate("classId", "name");
+  if (!students.length) {
     throw new ApiError(404, msg.notFound("Student"));
   }
-  if (!result.modifiedCount) {
-    throw new ApiError(400, msg.noChanges("Student"));
-  }
+
+  const ops = students.map((s) => ({
+    updateOne: {
+      filter: { _id: s._id },
+      update: {
+        $set: {
+          previousEnrollment: {
+            classId: s.classId ? ((s.classId as unknown as { _id?: unknown })._id ?? s.classId) : undefined,
+            className: s.classId ? ((s.classId as unknown as { name?: string }).name ?? "") : "",
+            section: s.section || "A",
+            academicYear: s.academicYear || "",
+            rollNo: s.rollNo || "",
+            promotedAt: new Date(),
+          },
+          classId: targetClassId,
+          section: targetSection,
+          status: "active" as const,
+          ...(targetAcademicYear ? { academicYear: targetAcademicYear } : {}),
+        },
+      },
+    },
+  }));
+
+  const result = await Student.bulkWrite((ops as unknown) as AnyBulkWriteOperation<StudentDoc>[]);
   await writeAudit({
     user,
     action: "promote",
     entity: "Student",
-    after: { ids, targetClassId, targetSection, matched: result.modifiedCount },
+    after: { ids, targetClassId, targetSection, targetAcademicYear, modifiedCount: result.modifiedCount },
   });
-  return result;
+  return { modifiedCount: result.modifiedCount, count: result.modifiedCount };
+}
+
+export async function revertPromotion(ids: string[], user?: AuthUser) {
+  if (!ids?.length) {
+    throw new ApiError(400, msg.updateBlocked("Student", "No student ids were sent."));
+  }
+  const students = await Student.find({ _id: { $in: ids } });
+  if (!students.length) {
+    throw new ApiError(404, msg.notFound("Student"));
+  }
+
+  const ops: AnyBulkWriteOperation<StudentDoc>[] = [];
+  let count = 0;
+  for (const s of students) {
+    if (s.previousEnrollment?.classId) {
+      ops.push({
+        updateOne: {
+          filter: { _id: s._id },
+          update: {
+            $set: {
+              classId: s.previousEnrollment.classId,
+              section: s.previousEnrollment.section || "A",
+              academicYear: s.previousEnrollment.academicYear || s.academicYear,
+              rollNo: s.previousEnrollment.rollNo || s.rollNo,
+            },
+            $unset: {
+              previousEnrollment: 1,
+            },
+          },
+        },
+      });
+      count += 1;
+    }
+  }
+
+  if (ops.length) {
+    await Student.bulkWrite(ops);
+  }
+  await writeAudit({
+    user,
+    action: "update",
+    entity: "Student",
+    after: { ids, revertedCount: count },
+  });
+  return { revertedCount: count };
+}
+
+export async function transferOutStudents(
+  ids: string[],
+  removeFromClass: boolean = false,
+  reason?: string,
+  user?: AuthUser
+) {
+  if (!ids?.length) {
+    throw new ApiError(400, msg.updateBlocked("Student", "No student ids were sent."));
+  }
+  const updatePayload: Record<string, unknown> = {
+    status: "transferred",
+    ...(reason ? { healthNotes: reason } : {}),
+  };
+
+  let result;
+  if (removeFromClass) {
+    result = await Student.updateMany(
+      { _id: { $in: ids } },
+      { $set: updatePayload, $unset: { classId: 1, section: 1 } }
+    );
+  } else {
+    result = await Student.updateMany({ _id: { $in: ids } }, { $set: updatePayload });
+  }
+
+  await writeAudit({
+    user,
+    action: "update",
+    entity: "Student",
+    after: { ids, status: "transferred", removeFromClass, modifiedCount: result.modifiedCount },
+  });
+  return { modifiedCount: result.modifiedCount };
 }
 
 export async function promoteAllStudents(user?: AuthUser) {

@@ -72,6 +72,11 @@ const configSchema = new Schema(
     principalPhotoUrl: { type: String, default: "" },
     principalQuoteBn: { type: String, default: "" },
     principalQuoteEn: { type: String, default: "" },
+    presidentName: { type: String, default: "" },
+    presidentDesignation: { type: String, default: "" },
+    presidentPhotoUrl: { type: String, default: "" },
+    presidentQuoteBn: { type: String, default: "" },
+    presidentQuoteEn: { type: String, default: "" },
     homeIntroBn: { type: String, default: "" },
     homeIntroEn: { type: String, default: "" },
     tasks: {

@@ -58,4 +58,16 @@ export const promoteValidation = z.object({
   ids: z.array(z.string()).min(1, "Select at least one student"),
   targetClassId: z.string(),
   targetSection: z.string(),
+  targetAcademicYear: z.string().optional(),
 });
+
+export const revertPromotionValidation = z.object({
+  ids: z.array(z.string()).min(1, "Select at least one student"),
+});
+
+export const transferOutValidation = z.object({
+  ids: z.array(z.string()).min(1, "Select at least one student"),
+  removeFromClass: z.boolean().optional(),
+  reason: z.string().optional(),
+});
+

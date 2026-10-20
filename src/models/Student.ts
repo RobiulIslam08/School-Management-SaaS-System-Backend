@@ -34,6 +34,14 @@ export interface StudentDoc {
   status: "pending" | "active" | "alumni" | "transferred";
   previousSchool: string;
   healthNotes: string;
+  previousEnrollment?: {
+    classId?: mongoose.Types.ObjectId;
+    className?: string;
+    section?: string;
+    academicYear?: string;
+    rollNo?: string;
+    promotedAt?: Date;
+  };
   address: {
     division: string;
     district: string;
@@ -94,6 +102,14 @@ const studentSchema = new Schema<StudentDoc>(
     status: { type: String, enum: ["pending", "active", "alumni", "transferred"], default: "pending" },
     previousSchool: { type: String, default: "" },
     healthNotes: { type: String, default: "" },
+    previousEnrollment: {
+      classId: { type: Schema.Types.ObjectId, ref: "ClassStructure" },
+      className: { type: String, default: "" },
+      section: { type: String, default: "" },
+      academicYear: { type: String, default: "" },
+      rollNo: { type: String, default: "" },
+      promotedAt: { type: Date },
+    },
     address: { type: addressSchema, default: () => ({}) },
     permanentAddress: { type: addressSchema, default: () => ({}) },
     guardian: {

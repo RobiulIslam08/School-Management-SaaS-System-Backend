@@ -64,8 +64,13 @@ export const websiteConfigValidation = z.object({
   principalName: text(80),
   principalDesignation: text(80),
   principalPhotoUrl: z.string().max(2_000_000).optional(),
-  principalQuoteBn: text(280),
-  principalQuoteEn: text(280),
+  principalQuoteBn: text(4000),
+  principalQuoteEn: text(4000),
+  presidentName: text(80),
+  presidentDesignation: text(80),
+  presidentPhotoUrl: z.string().max(2_000_000).optional(),
+  presidentQuoteBn: text(4000),
+  presidentQuoteEn: text(4000),
   homeIntroBn: text(800),
   homeIntroEn: text(800),
   tasks: z
@@ -165,8 +170,8 @@ export const websitePersonValidation = z.object({
   name: z.string().min(2).max(80),
   designation: text(80),
   photoUrl: z.string().max(2_000_000).optional(),
-  bioBn: text(2000),
-  bioEn: text(2000),
+  bioBn: text(4000),
+  bioEn: text(4000),
   phone: text(40),
   teacherId: z.string().optional(),
   sortOrder: z.number().int().optional(),
@@ -202,6 +207,7 @@ export const syllabusOutlineValidation = z.object({
 
 export const resultLookupValidation = z.object({
   studentId: z.string().min(2).max(40),
+  academicYear: z.string().max(12).optional(),
   examTypeId: z.string().optional(),
 });
 

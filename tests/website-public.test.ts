@@ -69,12 +69,13 @@ describe("website guards", () => {
 });
 
 describe("website copy", () => {
-  it("keeps three home tasks and twelve desks", () => {
+  it("keeps three home tasks and eleven desks (syndicate removed)", () => {
     expect(defaultTasks()).toHaveLength(3);
     const desks = defaultDesks();
-    expect(desks).toHaveLength(12);
-    expect(new Set(desks.map((desk) => desk.key)).size).toBe(12);
+    expect(desks).toHaveLength(11);
+    expect(new Set(desks.map((desk) => desk.key)).size).toBe(11);
     expect(desks.some((desk) => desk.key === "committee")).toBe(true);
+    expect(desks.some((desk) => desk.key === "syndicate")).toBe(false);
   });
 
   it("falls back when stored home tasks or desks are empty", () => {

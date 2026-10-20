@@ -48,15 +48,35 @@ export function ensureReceiptsMenu(menus: MenuItem[]): MenuItem[] {
 
 /** Adds the school committee link once, and renames the old assistant-principal label. */
 export function ensureLeadershipMenu(menus: MenuItem[]): MenuItem[] {
+  const honorableChild: MenuChild = {
+    key: "honorable",
+    href: "/about/honorable",
+    labelBn: "সাবেক অধ্যক্ষ, সভাপতি ও দাতা",
+    labelEn: "Former Leaders & Donors",
+    visible: true,
+  };
+
   return menus.map((item) => {
+    if (item.key === "about") {
+      const children = (item.children ?? []).slice();
+      if (!children.some((c) => c.key === "honorable" || c.href === "/about/honorable")) {
+        const insertAt = children.findIndex((c) => c.key === "gallery");
+        if (insertAt === -1) children.push({ ...honorableChild });
+        else children.splice(insertAt, 0, { ...honorableChild });
+      }
+      return { ...item, children };
+    }
     if (item.key === "authorities") {
-      const children = item.children ?? [];
-      if (children.some((child) => child.key === "committee")) return item;
-      const governingAt = children.findIndex((child) => child.key === "governing");
-      const insertAt = governingAt === -1 ? children.length : governingAt;
-      const next = children.slice();
-      next.splice(insertAt, 0, { ...committeeMenuChild });
-      return { ...item, children: next };
+      let children = (item.children ?? []).filter((child) => child.key !== "syndicate");
+      if (!children.some((child) => child.key === "committee")) {
+        const governingAt = children.findIndex((child) => child.key === "governing");
+        const insertAt = governingAt === -1 ? children.length : governingAt;
+        children.splice(insertAt, 0, { ...committeeMenuChild });
+      }
+      if (!children.some((child) => child.key === "honorable" || child.href === "/about/honorable")) {
+        children.push({ ...honorableChild });
+      }
+      return { ...item, children };
     }
     if (item.key !== "office") return item;
     const children = (item.children ?? []).map((child) => {
@@ -86,6 +106,7 @@ export function defaultMenus(): MenuItem[] {
         { key: "principal", href: "/about/principal", labelBn: "প্রধান শিক্ষকের বাণী", labelEn: "Principal's message", visible: true },
         { key: "facilities", href: "/about/facilities", labelBn: "সুবিধা", labelEn: "Facilities", visible: true },
         { key: "achievements", href: "/about/achievements", labelBn: "কৃতিত্ব", labelEn: "Achievements", visible: true },
+        { key: "honorable", href: "/about/honorable", labelBn: "সাবেক অধ্যক্ষ, সভাপতি ও দাতা", labelEn: "Former Leaders & Donors", visible: true },
         { key: "gallery", href: "/gallery", labelBn: "গ্যালারি", labelEn: "Gallery", visible: true },
       ],
     },
@@ -131,7 +152,6 @@ export function defaultMenus(): MenuItem[] {
         { ...committeeMenuChild },
         { key: "governing", href: "/authorities/governing", labelBn: "পরিচালনা পর্ষদ", labelEn: "Governing body", visible: true },
         { key: "council", href: "/authorities/council", labelBn: "একাডেমিক কাউন্সিল", labelEn: "Academic council", visible: true },
-        { key: "syndicate", href: "/authorities/syndicate", labelBn: "সিন্ডিকেট", labelEn: "Syndicate", visible: true },
         { key: "pta", href: "/authorities/pta", labelBn: "অভিভাবক কমিটি", labelEn: "Parent committee", visible: true },
       ],
     },
@@ -557,15 +577,6 @@ export function defaultDesks(): DeskCopy[] {
       visitEn: ["A notice before the meeting", "The syllabus is on this site", "After the result is published"],
     },
     {
-      key: "syndicate",
-      noteBn: "সিন্ডিকেট একাডেমিক নীতি ও বাজেট আলোচনা করে। ফির অঙ্ক অফিস ঘোষণা করে। এই পাতায় কোনো সংখ্যা নেই।",
-      noteEn: "The syndicate discusses academic policy and the budget. The office announces fee amounts. This page has no figures.",
-      dutiesBn: ["একাডেমিক নীতি", "বাজেট আলোচনা", "ফির অঙ্ক অফিস ঘোষণা করে"],
-      dutiesEn: ["Academic policy", "Budget discussion", "The office announces fee amounts"],
-      visitBn: ["সভার তারিখ নোটিশে", "ফির অঙ্ক অফিসে", "নীতি নোটিশে"],
-      visitEn: ["The meeting date is a notice", "Fee amounts are at the office", "Policy is a notice"],
-    },
-    {
       key: "pta",
       noteBn: "অভিভাবক কমিটি সভার তারিখ ও আলোচ্য বিষয় জানায়। ব্যক্তিগত ফোন ও বাড়ির ঠিকানা এই তালিকায় নেই।",
       noteEn: "The parent committee publishes the meeting date and the agenda. Personal phones and home addresses are not on this list.",
@@ -710,9 +721,17 @@ export function defaultConfig() {
     stats: [] as Array<{ labelBn: string; labelEn: string; value: string }>,
     principalName: "",
     principalDesignation: "প্রধান শিক্ষক",
-    principalPhotoUrl: "",
-    principalQuoteBn: "আমাদের কাজ শিক্ষার্থীকে নিরাপদে শেখানো।",
-    principalQuoteEn: "Our work is to teach students in a safe school.",
+    principalQuoteBn:
+      "বিসমিল্লাহির রাহমানির রাহিম।\n\nজ্ঞান, শৃঙ্খলা ও নৈতিকতার এক অনন্য মেলবন্ধনে আমাদের এই ঐতিহাসিক বিদ্যাপীঠ ভবিষ্যৎ প্রজন্মকে যোগ্য, দক্ষ ও আদর্শ মানুষ হিসেবে গড়ে তোলার পবিত্র ব্রতে নিয়োজিত। শিক্ষার প্রকৃত উদ্দেশ্য কেবল পুঁথিগত বিদ্যার্জন কিংবা পরীক্ষায় জিপিএ-৫ অর্জন নয়; বরং সুপ্ত প্রতিভার পরিপূর্ণ বিকাশ, মানবিক মূল্যবোধ, পরমতসহিষ্ণুতা, দেশপ্রেম এবং বাস্তবমুখী কর্মদক্ষতার সমন্বয়ে প্রতিটি শিক্ষার্থীকে একবিংশ শতাব্দীর আলোকিত ও দায়িত্বশীল নাগরিক হিসেবে তৈরি করাই আমাদের প্রধান ব্রত।\n\nবর্তমান দ্রুত পরিবর্তনশীল বিশ্বে প্রযুক্তিনির্ভর আধুনিক শিক্ষার গুরুত্ব অপরিসীম। সেই তাগিদ থেকেই আমাদের প্রতিষ্ঠানে সুসজ্জিত স্মার্ট মাল্টিমিডিয়া ক্লাসরুম, আধুনিক কম্পিউটার ল্যাব, সমৃদ্ধ বিজ্ঞানাগার এবং তথ্যসমৃদ্ধ পাঠাগারের ব্যবস্থা নিশ্চিত করা হয়েছে। পাঠ্যক্রমের পাশাপাশি শিক্ষার্থীদের মানসিক ও শারীরিক উৎকর্ষ সাধনের লক্ষ্যে বিতর্ক প্রতিযোগিতা, সাংস্কৃতিক অনুষ্ঠান, স্কাউটিং, বিজ্ঞান মেলা এবং বার্ষিক ক্রীড়া প্রতিযোগিতার মতো সহশিক্ষা কার্যক্রমকে আমরা সমানভাবে উৎসাহিত করি। আমাদের অভিজ্ঞ, দক্ষ ও নিবেদিতপ্রাণ শিক্ষক মণ্ডলী প্রতিটি শিক্ষার্থীর মেধা ও মনন বিকাশে অত্যন্ত যত্ন ও স্নেহের সাথে দিকনির্দেশনা প্রদান করে যাচ্ছেন।\n\nএকটি আদর্শ বিদ্যাপীঠ গড়ে তোলার ক্ষেত্রে শিক্ষক, শিক্ষার্থী এবং অভিভাবকদের সমন্বিত প্রচেষ্টা অনস্বীকার্য। সম্মানিত অভিভাবকবৃন্দের প্রতি আমার সনির্বন্ধ অনুরোধ—আপনার সন্তানের পড়াশোনা, নিয়মিত উপস্থিতি ও মানসিক স্বাস্থ্যের প্রতি সজাগ দৃষ্টি রাখুন এবং তাদের নৈতিক শিক্ষায় অনুপ্রাণিত করুন। প্রতিষ্ঠানের সার্বিক উন্নয়নে আপনাদের সুচিন্তিত মতামত ও গঠনমূলক পরামর্শ আমাদের পথচলাকে আরও সমৃদ্ধ করবে।\n\nপরম করুণাময় মহান আল্লাহ তায়ালার দরবারে প্রার্থনা—আমাদের সকল শুভ উদ্যোগ ও সম্মিলিত প্রচেষ্টা সফল হোক। আমাদের প্রিয় শিক্ষার্থীরা জ্ঞান, সততা ও মানবিকতার আলো ছড়িয়ে দেশ ও জাতির গৌরব বৃদ্ধি করুক—এই আমার আন্তরিক প্রত্যাশা ও শুভকামনা।",
+    principalQuoteEn:
+      "Bismillahir Rahmanir Rahim.\n\nRooted in a profound synthesis of knowledge, discipline, and ethical values, our historic institution is dedicated to the sacred mission of shaping our future generations into enlightened, skilled, and compassionate human beings. The true essence of education extends far beyond memorization of textbooks or securing top letter grades; our paramount commitment is to cultivate innate potential, human values, mutual tolerance, patriotism, and practical life skills to prepare every student as an enlightened, responsible global citizen for the 21st century.\n\nIn today's rapidly evolving world, science and technology-driven education is indispensable. Embracing this reality, we have established smart multimedia classrooms, modern computer laboratories, fully equipped science laboratories, and an extensive library. Alongside rigorous academic curricula, we actively foster co-curricular engagements including debate competitions, cultural events, scouting, science fairs, and annual athletic tournaments for holistic physical and intellectual development. Our experienced, dedicated faculty members labor untiringly with paternal care and wisdom to guide every learner toward excellence.\n\nThe realization of an ideal educational institution rests upon the unified synergy of teachers, students, and parents. I earnestly appeal to our respected parents and guardians to stay actively engaged in your children's academic progress, daily attendance, and emotional well-being while inspiring them with strong moral values. Your constructive advice and continuous cooperation are invaluable assets to our mission. May the Almighty bless all our collective endeavors and empower our students to bring lasting honor to the nation.",
+    presidentName: "",
+    presidentDesignation: "সভাপতি, পরিচালনা পর্ষদ",
+    presidentPhotoUrl: "",
+    presidentQuoteBn:
+      "বিসমিল্লাহির রাহমানির রাহিম।\n\nএকটি জাতির আত্মবিকাশ, মর্যাদা ও টেকসই অর্থনৈতিক সমৃদ্ধির অন্যতম প্রধান চালিকাশক্তি হলো মানসম্মত শিক্ষা। সেই সুমহান আদর্শকে সামনে রেখে আমাদের পরিচালনা পর্ষদ এই প্রাচীন ও ঐতিহ্যবাহী প্রতিষ্ঠানকে অত্র অঞ্চলের অন্যতম সেরা, আধুনিক ও যুগোপযোগী শিক্ষাঙ্গন হিসেবে রূপান্তর করতে নিরবচ্ছিন্নভাবে দায়িত্ব পালন করে যাচ্ছে। প্রতিষ্ঠালগ্ন থেকেই এলাকার সুধীজন, দূরদর্শী শিক্ষানুরাগী, সম্মানিত অভিভাবক এবং আপামর জনসাধারণের অকৃত্রিম ভালোবাসা ও সহযোগিতায় এ প্রতিষ্ঠানটি এক গৌরবময় ঐতিহ্যের ধারক হয়ে উঠেছে।\n\nপরিচালনা পর্ষদের মূল লক্ষ্য হলো শিক্ষার্থীদের জন্য একটি নিরাপদ, নান্দনিক, সুশৃঙ্খল এবং বিশ্বমানের শিক্ষা পরিবেশ নিশ্চিত করা। আমরা প্রতিষ্ঠানের অবকাঠামোগত উন্নয়ন, স্মার্ট শ্রেণিকক্ষ নির্মাণ, অত্যাধুনিক ডিজিটাল ল্যাব স্থাপন এবং খেলাধুলার উপযুক্ত পরিবেশ তৈরিতে অগ্রাধিকার ভিত্তিতে কাজ করে যাচ্ছি। প্রশাসনিক স্বচ্ছতা, জবাবদিহিতা, যোগ্য ও মেধাবী শিক্ষক নির্বাচন এবং শিক্ষার উপযুক্ত পরিবেশ বজায় রাখা আমাদের পরিচালনা নীতির মূল ভিত্তি। আমরা বিশ্বাস করি, সুযোগ্য পরিচালনা ও নিষ্ঠাবান শিক্ষক সমাজের মেলবন্ধনে আমাদের কোমলমতি শিক্ষার্থীরা দেশীয় ও আন্তর্জাতিক পরিমণ্ডলে যেকোনো প্রতিযোগিতায় নিজেদের শ্রেষ্ঠত্ব প্রমাণ করতে সক্ষম হবে।\n\nশিক্ষার সাথে যদি গভীর নীতিবোধ ও দেশপ্রেমের সংযোগ ঘটে, তবে সেই প্রজন্মই দেশকে সমৃদ্ধির সর্বোচ্চ শিখরে পৌঁছে দিতে পারে। প্রতিষ্ঠানের উত্তরোত্তর সমৃদ্ধি ও অগ্রগতিতে শিক্ষক, অভিভাবক, শুভাকাঙ্ক্ষী এবং সরকারি-বেসরকারি সকল মহলের আন্তরিক সহযোগিতার জন্য পরিচালনা পর্ষদের পক্ষ থেকে জানাই আন্তরিক কৃতজ্ঞতা ও অভিনন্দন। আসুন, আমরা সকলে ঐক্যবদ্ধভাবে আমাদের আগামী প্রজন্মকে আলোকিত মানুষ হিসেবে গড়ে তোলার এই মহতী যাত্রায় শামিল হই। পরম করুণাময় আমাদের সহায় হোন।",
+    presidentQuoteEn:
+      "Bismillahir Rahmanir Rahim.\n\nQuality education is the quintessential engine of national enlightenment, self-dignity, and sustainable prosperity. Upholding this noble mandate, our Governing Body is steadfastly committed to steering this esteemed institution into a pioneering citadel of modern learning, disciplined governance, and moral excellence. Since its inception, the enduring trust, visionary philanthropy, and active cooperation of local patrons, dedicated educationists, respected guardians, and the community have nurtured this institution into a symbol of pride and achievement.\n\nThe prime responsibility of the Governing Body is to guarantee a secure, inspiring, aesthetically refined, and world-class educational ecosystem. We place utmost priority on physical infrastructure development, state-of-the-art smart classrooms, cutting-edge ICT labs, and expansive sports and cultural grounds. Uncompromising transparency, administrative accountability, meritocratic teacher recruitment, and pedagogical excellence constitute the bedrocks of our governance. We firmly believe that the union of visionary governance and dedicated faculty will enable our students to distinguish themselves across national and international horizons.\n\nWhen education is steeped in integrity and love for the motherland, that generation possesses the power to lead the nation to the pinnacle of greatness. On behalf of the Governing Body, I extend my heartfelt gratitude to our teachers, parents, alumni, well-wishers, and government authorities for their steadfast support. Let us join hands to guide our upcoming generations toward a radiant and prosperous future. May the Almighty be our guide.",
     homeIntroBn: "",
     homeIntroEn: "",
     tasks: defaultTasks(),

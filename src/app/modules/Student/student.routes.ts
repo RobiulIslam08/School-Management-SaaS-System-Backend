@@ -5,7 +5,13 @@ import { requireFeature } from "../../../middleware/requireFeature";
 import { validate } from "../../../middleware/validate";
 import { asyncHandler } from "../../../utils/asyncHandler";
 import { studentController } from "./student.controller";
-import { promoteValidation, studentCreateValidation, studentUpdateValidation } from "./student.validation";
+import {
+  promoteValidation,
+  revertPromotionValidation,
+  studentCreateValidation,
+  studentUpdateValidation,
+  transferOutValidation,
+} from "./student.validation";
 
 const router = Router();
 
@@ -34,6 +40,22 @@ router.post(
   requireFeature("students"),
   validate(promoteValidation),
   asyncHandler(studentController.promote)
+);
+router.post(
+  "/students/revert-promotion",
+  authenticate,
+  authorize("students:approve"),
+  requireFeature("students"),
+  validate(revertPromotionValidation),
+  asyncHandler(studentController.revertPromotion)
+);
+router.post(
+  "/students/transfer-out",
+  authenticate,
+  authorize("students:approve"),
+  requireFeature("students"),
+  validate(transferOutValidation),
+  asyncHandler(studentController.transferOut)
 );
 router.post(
   "/students/promote-all",

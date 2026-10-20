@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { ClassStructure } from "../../../models/ClassStructure";
+import { Donation } from "../../../models/Accounts";
 import { FeaturePackage, normalizeModules } from "../../../models/FeaturePackage";
 import { ExamType } from "../../../models/ExamType";
 import { FeeLedger } from "../../../models/Fee";
@@ -65,9 +66,11 @@ export async function ensureWebsite(): Promise<void> {
 }
 
 async function seedWebsiteIfEmpty(): Promise<void> {
-  if (!(await WebsiteConfig.exists({}))) {
-    await WebsiteConfig.create(defaultConfig());
+  const hasConfig = await WebsiteConfig.exists({});
+  if (hasConfig) {
+    return;
   }
+  await WebsiteConfig.create(defaultConfig());
   if (!(await WebsitePage.exists({}))) {
     await WebsitePage.insertMany(defaultPages());
   }
@@ -178,8 +181,10 @@ function lockMenus(menus: MenuItem[] | undefined): MenuItem[] {
   return ensureLeadershipMenu(ensureReceiptsMenu(source.map((item) => (locked.has(item.key) ? { ...item, visible: true, locked: true } : item))));
 }
 
-function publicConfig(doc: Record<string, unknown>) {
-  const theme = themeTokens(String(doc.themePreset ?? "heritage"), String(doc.themePrimary ?? ""));
+function publicConfig(doc: Record<string, unknown>, schoolPrimary?: string) {
+  const primary = String(doc.themePrimary || schoolPrimary || "");
+  const preset = String(doc.themePreset ?? (primary ? "custom" : "heritage"));
+  const theme = themeTokens(preset, primary);
   const stats = Array.isArray(doc.stats)
     ? doc.stats.filter((item) => item && typeof item === "object" && String((item as { value?: string }).value ?? "").trim())
     : [];
@@ -214,6 +219,11 @@ function publicConfig(doc: Record<string, unknown>) {
     principalPhotoUrl: doc.principalPhotoUrl ?? "",
     principalQuoteBn: doc.principalQuoteBn ?? "",
     principalQuoteEn: doc.principalQuoteEn ?? "",
+    presidentName: doc.presidentName ?? "",
+    presidentDesignation: doc.presidentDesignation ?? "",
+    presidentPhotoUrl: doc.presidentPhotoUrl ?? "",
+    presidentQuoteBn: doc.presidentQuoteBn ?? "",
+    presidentQuoteEn: doc.presidentQuoteEn ?? "",
     homeIntroBn: doc.homeIntroBn ?? "",
     homeIntroEn: doc.homeIntroEn ?? "",
     tasks: publicTasks(doc.tasks),
@@ -260,6 +270,7 @@ export async function saveConfig(body: Record<string, unknown>) {
   const doc = await configDoc();
   assertOptionalImage(typeof body.heroImageUrl === "string" ? body.heroImageUrl : undefined, "Hero image");
   assertOptionalImage(typeof body.principalPhotoUrl === "string" ? body.principalPhotoUrl : undefined, "Principal photo");
+  assertOptionalImage(typeof body.presidentPhotoUrl === "string" ? body.presidentPhotoUrl : undefined, "President photo");
   if (typeof body.heroVideoUrl === "string" && !isEmbedUrl(body.heroVideoUrl)) {
     throw new ApiError(400, msg.invalid("Video", "Use a YouTube or Facebook link."));
   }
@@ -524,13 +535,13 @@ export async function getPublicSite() {
     return cachedSite.data;
   }
   await ensureWebsite();
-  const [settings, config, pack, notices, posts, teachers, classes, subjects, people, pages, albums, files, albumCounts, videos] = await Promise.all([
-    SchoolSettings.findOne().select("name logoUrl motto address eiin establishedYear academicYear").lean(),
+  const [settings, config, pack, notices, posts, teachers, classes, subjects, people, pages, albums, files, albumCounts, videos, donors] = await Promise.all([
+    SchoolSettings.findOne().select("name logoUrl motto address eiin establishedYear academicYear theme").lean(),
     WebsiteConfig.findOne().lean(),
     FeaturePackage.findOne().select("modules").lean(),
     listPublicNotices(),
     WebsitePost.find({ status: "published" }).sort({ pinned: -1, eventDate: -1, createdAt: -1 }).limit(8).lean(),
-    Teacher.find({ isActive: true }).select("name designation photoUrl phone bioBn bioEn").sort({ name: 1 }).lean(),
+    Teacher.find({ isActive: true }).select("name designation photoUrl phone bioBn bioEn joiningDate retirementDate").sort({ name: 1 }).lean(),
     ClassStructure.find({ isActive: true }).select("name code sections group level").sort({ sortOrder: 1, level: 1 }).lean(),
     Subject.find({ isActive: true }).select("name nameBn code classId group").sort({ sortOrder: 1 }).lean(),
     WebsitePerson.find({ status: "published" }).select("-__v").sort({ sortOrder: 1 }).lean(),
@@ -545,6 +556,11 @@ export async function getPublicSite() {
       .select("albumId videoUrl alt captionBn captionEn")
       .sort({ createdAt: -1 })
       .limit(24)
+      .lean(),
+    Donation.find({ deletedAt: null })
+      .select("donorName donorPhone donorAddress amount date purpose academicYear")
+      .sort({ amount: -1, date: -1 })
+      .limit(100)
       .lean(),
   ]);
   const subjectsByClass = new Map<string, Array<{ name: string; nameBn: string; code: string; group: string }>>();
@@ -574,10 +590,16 @@ export async function getPublicSite() {
     },
     config: (() => {
       const modules = normalizeModules(pack?.modules);
-      const pub = publicConfig((config ?? {}) as Record<string, unknown>);
+      const schoolPrimary = (settings as { theme?: { primary?: string } })?.theme?.primary;
+      const pub = publicConfig((config ?? {}) as Record<string, unknown>, schoolPrimary);
+      const rawMenus = (pub.menus ?? []).map((item) =>
+        item.key === "authorities"
+          ? { ...item, children: (item.children ?? []).filter((child) => child.key !== "syndicate") }
+          : item
+      );
       const menus = modules.fees
-        ? pub.menus
-        : pub.menus.map((item) =>
+        ? rawMenus
+        : rawMenus.map((item) =>
             item.key === "academic" ? { ...item, children: item.children.filter((child) => child.key !== "receipts") } : item
           );
       return {
@@ -587,7 +609,7 @@ export async function getPublicSite() {
         receiptLookupEnabled: pub.receiptLookupEnabled && modules.fees,
       };
     })(),
-    notices: notices.slice(0, 8),
+    notices: notices.slice(0, 80),
     posts,
     teachers: teachers.map((row) => ({
       _id: row._id,
@@ -597,6 +619,8 @@ export async function getPublicSite() {
       phone: row.phone ?? "",
       bioBn: row.bioBn ?? "",
       bioEn: row.bioEn ?? "",
+      joiningDate: row.joiningDate ? new Date(row.joiningDate).toISOString() : undefined,
+      retirementDate: row.retirementDate ? new Date(row.retirementDate).toISOString() : undefined,
     })),
     classes: classes.map((item) => ({
       _id: item._id,
@@ -607,7 +631,7 @@ export async function getPublicSite() {
       sections: sectionNames(item.sections),
       subjects: subjectsByClass.get(String(item._id)) ?? [],
     })),
-    people,
+    people: people.filter((p) => p.board !== "syndicate"),
     pages,
     albums: albums.map((album) => ({
       ...album,
@@ -628,6 +652,16 @@ export async function getPublicSite() {
       };
     }),
     files,
+    donors: donors.map((d) => ({
+      _id: d._id,
+      donorName: d.donorName,
+      donorAddress: d.donorAddress || "",
+      donorPhone: d.donorPhone || "",
+      amount: d.amount,
+      purpose: d.purpose || "",
+      academicYear: d.academicYear || "",
+      date: d.date ? new Date(d.date).toISOString() : undefined,
+    })),
   };
   cachedSite = { data: result, expiresAt: now + 60_000 };
   return result;
@@ -679,7 +713,7 @@ export async function listPublicExams() {
   return ExamType.find({ isPublished: true }).select("name academicYear").sort({ academicYear: -1, name: 1 }).lean();
 }
 
-export async function lookupPublicResult(body: { studentId: string; examTypeId?: string }) {
+export async function lookupPublicResult(body: { studentId: string; academicYear?: string; examTypeId?: string }) {
   const config = await WebsiteConfig.findOne().select("resultLookupEnabled meritListEnabled").lean();
   if (config?.resultLookupEnabled === false) {
     throw new ApiError(403, "Result lookup is not open yet.");
@@ -699,9 +733,15 @@ export async function lookupPublicResult(body: { studentId: string; examTypeId?:
     .populate("subjectMarks.subjectId", "name nameBn")
     .lean();
   const published = results.filter((item) => {
-    const exam = item.examTypeId as unknown as { isPublished?: boolean; _id?: unknown } | null;
+    const exam = item.examTypeId as unknown as { isPublished?: boolean; _id?: unknown; academicYear?: string } | null;
     if (!exam?.isPublished) return false;
     if (body.examTypeId && String(exam._id) !== body.examTypeId) return false;
+    if (body.academicYear && body.academicYear.trim()) {
+      const year = body.academicYear.trim();
+      const examYear = exam.academicYear ? String(exam.academicYear).trim() : "";
+      const resultYear = item.academicYear ? String(item.academicYear).trim() : "";
+      if (examYear !== year && resultYear !== year) return false;
+    }
     return true;
   });
   if (!published.length) throw new ApiError(404, RESULT_MISS);

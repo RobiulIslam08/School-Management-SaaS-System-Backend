@@ -8,7 +8,9 @@ import {
   listStudents,
   promoteAllStudents,
   promoteStudents,
+  revertPromotion,
   studentSaveMessage,
+  transferOutStudents,
   updateStudent,
 } from "./student.service";
 
@@ -30,8 +32,27 @@ export const studentController = {
     ok(res, student, studentSaveMessage("updated", sms));
   },
   async promote(req: Request, res: Response): Promise<void> {
-    const result = await promoteStudents(req.body.ids, req.body.targetClassId, req.body.targetSection, req.user);
+    const result = await promoteStudents(
+      req.body.ids,
+      req.body.targetClassId,
+      req.body.targetSection,
+      req.body.targetAcademicYear,
+      req.user
+    );
     ok(res, result, msg.updated("Student promotion"));
+  },
+  async revertPromotion(req: Request, res: Response): Promise<void> {
+    const result = await revertPromotion(req.body.ids, req.user);
+    ok(res, result, `${result.revertedCount} শিক্ষার্থীর প্রমোশন পূর্বাবস্থায় ফিরিয়ে নেওয়া হয়েছে।`);
+  },
+  async transferOut(req: Request, res: Response): Promise<void> {
+    const result = await transferOutStudents(
+      req.body.ids,
+      Boolean(req.body.removeFromClass),
+      req.body.reason,
+      req.user
+    );
+    ok(res, result, `${result.modifiedCount} শিক্ষার্থীকে সফলভাবে ছাড়পত্র প্রদান/স্থানান্তর করা হয়েছে।`);
   },
   async promoteAll(req: Request, res: Response): Promise<void> {
     const result = await promoteAllStudents(req.user);

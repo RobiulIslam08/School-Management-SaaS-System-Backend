@@ -2,6 +2,7 @@ export function buildStudentFilter(query: Record<string, unknown>): Record<strin
   const filter: Record<string, unknown> = {};
   if (query.classId) filter.classId = query.classId;
   if (query.section) filter.section = query.section;
+  if (query.academicYear) filter.academicYear = query.academicYear;
   if (query.status) filter.status = query.status;
   if (query.district) filter["address.district"] = query.district;
   if (query.area) filter["address.area"] = query.area;

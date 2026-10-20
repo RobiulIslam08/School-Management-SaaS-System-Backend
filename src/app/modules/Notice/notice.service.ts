@@ -5,6 +5,7 @@ import type { AuthUser } from "../../../types/express";
 import { ApiError } from "../../../utils/ApiError";
 import { msg } from "../../../utils/messages";
 import { deleteDocument, requireId, updateDocument } from "../../../utils/persist";
+import { invalidatePublicSiteCache } from "../Website/website.service";
 import type { NoticeCreateBody } from "./notice.interface";
 
 function escapeRegExp(value: string): string {
@@ -91,7 +92,7 @@ export async function createNotice(body: NoticeCreateBody, user?: AuthUser) {
     showOnWebsite = isPublished && audience === "all";
   }
   const refNo = body.refNo?.trim() || (await nextRefNo());
-  return Notice.create({
+  const created = await Notice.create({
     title: body.title,
     body: body.body,
     audience,
@@ -105,6 +106,8 @@ export async function createNotice(body: NoticeCreateBody, user?: AuthUser) {
     pinned: Boolean(body.pinned),
     createdByName: user?.name ?? "",
   });
+  invalidatePublicSiteCache();
+  return created;
 }
 
 export async function updateNotice(id: string | undefined, body: unknown) {
@@ -125,11 +128,15 @@ export async function updateNotice(id: string | undefined, body: unknown) {
       data.issueDate = new Date(data.issueDate);
     }
   }
-  return updateDocument(Notice, id, payload, "Notice");
+  const result = await updateDocument(Notice, id, payload, "Notice");
+  invalidatePublicSiteCache();
+  return result;
 }
 
 export async function deleteNotice(id: string | undefined) {
-  return deleteDocument(Notice, id, "Notice");
+  const result = await deleteDocument(Notice, id, "Notice");
+  invalidatePublicSiteCache();
+  return result;
 }
 
 const publicNoticeSelect = "title body refNo issueDate category signatories pinned createdAt createdByName";
