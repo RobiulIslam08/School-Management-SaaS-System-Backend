@@ -5,7 +5,7 @@ NIXPACKS_NODE_VERSION = '20'
 cmds = ['npm install']
 
 [phases.build]
-cmds = ['npm run build']
+cmds = ['chmod -R +x node_modules/.bin', 'npm run build']
 
 [start]
 cmd = 'npm run start'
