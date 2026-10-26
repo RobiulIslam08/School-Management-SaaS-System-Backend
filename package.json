@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "npx tsc -p tsconfig.json && tsc -p tsconfig.api.json --noEmit",
+    "build": "npx tsc -p tsconfig.json && npx tsc -p tsconfig.api.json --noEmit",
     "start": "node dist/server.js",
     "seed": "tsx src/seeds/index.ts",
     "seed:demo": "tsx src/seeds/seed-demo.ts",
