@@ -10,8 +10,10 @@ async function start(): Promise<void> {
     await seedIfNeeded();
   }
   const app = createApp();
-  app.listen(env.port, () => {
-    logger.info(`API listening on ${env.port}`);
+  // Bind all interfaces so Dokploy/Docker can reach the process (not only localhost).
+  const host = process.env.HOST ?? "0.0.0.0";
+  app.listen(env.port, host, () => {
+    logger.info(`API listening on ${host}:${env.port}`);
   });
 }
 
