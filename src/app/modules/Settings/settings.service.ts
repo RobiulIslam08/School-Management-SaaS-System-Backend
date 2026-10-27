@@ -27,7 +27,8 @@ export async function updateSettings(body: Record<string, unknown>, user?: AuthU
   if (themeObj?.primary) {
     await WebsiteConfig.updateOne(
       {},
-      { $set: { themePrimary: themeObj.primary, themePreset: "custom" } }
+      { $set: { themePrimary: themeObj.primary, themePreset: "custom" } },
+      { upsert: true }
     );
   }
 

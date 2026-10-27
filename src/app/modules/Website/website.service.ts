@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { env } from "../../../config/env";
 import { ClassStructure } from "../../../models/ClassStructure";
 import { Donation } from "../../../models/Accounts";
 import { FeaturePackage, normalizeModules } from "../../../models/FeaturePackage";
@@ -525,8 +526,25 @@ export async function markInquiry(id: string | undefined, read: boolean) {
 
 let cachedSite: { data: unknown; expiresAt: number } | null = null;
 
+/** Bust public_website Next Data Cache (tag public-site). No-op if origin/secret unset. */
+function notifyPublicSiteRevalidate(): void {
+  const origin = env.publicOrigin.replace(/\/$/, "");
+  const secret = env.revalidateSecret;
+  if (!origin || !secret) return;
+  // Node 18+ global fetch; avoid DOM lib in backend tsconfig
+  const fetchImpl = (globalThis as { fetch?: (url: string, init?: { method?: string; headers?: Record<string, string> }) => Promise<unknown> }).fetch;
+  if (!fetchImpl) return;
+  void fetchImpl(`${origin}/api/revalidate`, {
+    method: "POST",
+    headers: { "x-revalidate-secret": secret },
+  }).catch(() => {
+    /* optional; 60s ISR TTL still applies */
+  });
+}
+
 export function invalidatePublicSiteCache(): void {
   cachedSite = null;
+  notifyPublicSiteRevalidate();
 }
 
 export async function getPublicSite() {

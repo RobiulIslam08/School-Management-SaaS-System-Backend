@@ -52,6 +52,8 @@ export const env = {
   }),
   frontendOrigin: process.env.FRONTEND_ORIGIN ?? (isProduction ? "" : "http://localhost:3000"),
   publicOrigin: process.env.PUBLIC_ORIGIN ?? (isProduction ? "" : "http://localhost:3001"),
+  /** Same value as public_website / frontend; used to bust Next Data Cache after CMS writes. */
+  revalidateSecret: process.env.REVALIDATE_SECRET ?? "",
   cookieSecure: process.env.COOKIE_SECURE === "true" || isProduction,
   cookieSameSite: cookieSameSite as "lax" | "none" | "strict",
   ownerEmail: process.env.OWNER_EMAIL ?? "owner@example.com",
