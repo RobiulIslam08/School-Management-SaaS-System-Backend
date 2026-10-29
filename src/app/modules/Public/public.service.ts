@@ -14,7 +14,7 @@ import { ApiError } from "../../../utils/ApiError";
 import { msg } from "../../../utils/messages";
 import { createStudent } from "../Student/student.service";
 import { listPublicNotices } from "../Notice/notice.service";
-import { themeTokens } from "../Website/website.theme";
+import { resolveSiteTheme } from "../Website/website.theme";
 import { requirePublicAdmission, resolveGuardianStudentId } from "./public.utils";
 
 export { listPublicNotices };
@@ -25,14 +25,6 @@ export async function publicBranding() {
     WebsiteConfig.findOne().select("themePreset themePrimary").lean(),
     FeaturePackage.findOne().lean(),
   ]);
-  const schoolPrimary = settings?.theme?.primary;
-  const rawPreset = String(config?.themePreset ?? (schoolPrimary ? "custom" : "heritage"));
-  const primary = String(
-    (rawPreset === "custom"
-      ? schoolPrimary || config?.themePrimary
-      : config?.themePrimary || schoolPrimary) ?? "#14532d"
-  );
-  const tokens = themeTokens(rawPreset, primary);
   return {
     name: settings?.name ?? "School",
     logoUrl: settings?.logoUrl ?? "",
@@ -41,11 +33,7 @@ export async function publicBranding() {
     eiin: settings?.eiin ?? "",
     establishedYear: settings?.establishedYear ?? null,
     academicYear: settings?.academicYear ?? "",
-    theme: {
-      ...tokens,
-      primary: tokens.primary,
-      radius: settings?.theme?.radius ?? tokens.radius,
-    },
+    theme: resolveSiteTheme(config, settings?.theme),
     publicAdmission: normalizeModules(pack?.modules).publicAdmission,
   };
 }

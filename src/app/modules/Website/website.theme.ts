@@ -53,6 +53,22 @@ export function readableOn(background: string): "#111111" | "#ffffff" {
   return white >= ink ? "#ffffff" : "#111111";
 }
 
+/**
+ * Single source for the public theme. `/public/branding` and `/public/website` must agree
+ * exactly, otherwise the public site repaints colors when it re-syncs.
+ */
+export function resolveSiteTheme(
+  config: { themePreset?: unknown; themePrimary?: unknown } | null | undefined,
+  settingsTheme?: { primary?: string; radius?: string } | null
+): ThemeTokens {
+  const schoolPrimary = settingsTheme?.primary;
+  const configPrimary = typeof config?.themePrimary === "string" ? config.themePrimary : "";
+  const preset = String(config?.themePreset || (schoolPrimary ? "custom" : "heritage"));
+  const primary = preset === "custom" ? schoolPrimary || configPrimary : configPrimary || schoolPrimary || "";
+  const tokens = themeTokens(preset, primary);
+  return settingsTheme?.radius ? { ...tokens, radius: settingsTheme.radius } : tokens;
+}
+
 export function themeTokens(preset: string, customPrimary: string): ThemeTokens {
   const known = preset === "royal" || preset === "crimson" || preset === "azure" || preset === "custom" ? preset : "heritage";
   const primary = known === "custom" ? normalizeHex(customPrimary) : PRESET_PRIMARY[known];

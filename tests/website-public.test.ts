@@ -1,7 +1,7 @@
 import { defaultDesks, defaultMenus, defaultPages, defaultTasks, ensureLeadershipMenu, ensureReceiptsMenu, publicDesks, publicTasks } from "../src/app/modules/Website/website.defaults";
 import { RESULT_MISS, decodeMediaDataUrl, isAllowedImage, isEmbedUrl, sameDob, seoLengthOk } from "../src/app/modules/Website/website.guards";
 import { RECEIPT_MISS, groupPublicReceipts, legacyReceiptNo, type ReceiptSource } from "../src/app/modules/Website/website.receipts";
-import { contrastRatio, readableOn, themeTokens } from "../src/app/modules/Website/website.theme";
+import { contrastRatio, readableOn, resolveSiteTheme, themeTokens } from "../src/app/modules/Website/website.theme";
 
 describe("website theme", () => {
   it("keeps white text on the heritage green", () => {
@@ -18,6 +18,14 @@ describe("website theme", () => {
 
   it("falls back when the custom colour is not a hex", () => {
     expect(themeTokens("custom", "green").primary).toBe("#14532d");
+  });
+
+  it("resolves one theme for branding and the site bundle", () => {
+    expect(resolveSiteTheme({ themePreset: "custom", themePrimary: "#111827" }, { primary: "#7c2d12" }).primary).toBe("#7c2d12");
+    expect(resolveSiteTheme({ themePreset: "royal", themePrimary: "#111827" }, { primary: "#7c2d12" }).primary).toBe("#0b3d6e");
+    expect(resolveSiteTheme(null, { primary: "#7c2d12" })).toMatchObject({ preset: "custom", primary: "#7c2d12" });
+    expect(resolveSiteTheme(null, null)).toMatchObject({ preset: "heritage", primary: "#14532d" });
+    expect(resolveSiteTheme({ themePreset: "heritage" }, { radius: "1rem" }).radius).toBe("1rem");
   });
 });
 

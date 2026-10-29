@@ -31,7 +31,7 @@ import { ensureNoticeBoard } from "../Notice/notice.board";
 import { ensureWebsiteShowcase } from "./website.showcase";
 import { RESULT_MISS, decodeMediaDataUrl, isAllowedImage, isEmbedUrl, seoLengthOk } from "./website.guards";
 import { RECEIPT_MISS, groupPublicReceipts, type ReceiptSource } from "./website.receipts";
-import { themeTokens } from "./website.theme";
+import { resolveSiteTheme, themeTokens } from "./website.theme";
 
 type PageInput = {
   slug?: string;
@@ -183,15 +183,8 @@ function lockMenus(menus: MenuItem[] | undefined): MenuItem[] {
   return ensureLeadershipMenu(ensureReceiptsMenu(source.map((item) => (locked.has(item.key) ? { ...item, visible: true, locked: true } : item))));
 }
 
-function publicConfig(doc: Record<string, unknown>, schoolPrimary?: string) {
-  const rawPreset = String(doc.themePreset ?? "");
-  const primary = String(
-    (rawPreset === "custom" || !rawPreset
-      ? schoolPrimary || doc.themePrimary
-      : doc.themePrimary || schoolPrimary) ?? ""
-  );
-  const preset = String(doc.themePreset ?? (primary ? "custom" : "heritage"));
-  const theme = themeTokens(preset, primary);
+function publicConfig(doc: Record<string, unknown>, settingsTheme?: { primary?: string; radius?: string }) {
+  const theme = resolveSiteTheme(doc, settingsTheme);
   const stats = Array.isArray(doc.stats)
     ? doc.stats.filter((item) => item && typeof item === "object" && String((item as { value?: string }).value ?? "").trim())
     : [];
@@ -586,14 +579,7 @@ export async function getPublicSite() {
       school: Record<string, unknown>;
       config: Record<string, unknown>;
     };
-    const schoolPrimary = (freshSettings as { theme?: { primary?: string } } | null)?.theme?.primary;
-    const rawPreset = String(freshConfig?.themePreset ?? (schoolPrimary ? "custom" : "heritage"));
-    const primary = String(
-      (rawPreset === "custom"
-        ? schoolPrimary || freshConfig?.themePrimary
-        : freshConfig?.themePrimary || schoolPrimary) ?? ""
-    );
-    const liveTheme = themeTokens(rawPreset, primary);
+    const liveTheme = resolveSiteTheme(freshConfig, (freshSettings as { theme?: { primary?: string; radius?: string } } | null)?.theme);
     return {
       ...cached,
       school: {
@@ -667,8 +653,8 @@ export async function getPublicSite() {
     },
     config: (() => {
       const modules = normalizeModules(pack?.modules);
-      const schoolPrimary = (settings as { theme?: { primary?: string } })?.theme?.primary;
-      const pub = publicConfig((config ?? {}) as Record<string, unknown>, schoolPrimary);
+      const settingsTheme = (settings as { theme?: { primary?: string; radius?: string } } | null)?.theme;
+      const pub = publicConfig((config ?? {}) as Record<string, unknown>, settingsTheme);
       const rawMenus = (pub.menus ?? []).map((item) =>
         item.key === "authorities"
           ? { ...item, children: (item.children ?? []).filter((child) => child.key !== "syndicate") }
