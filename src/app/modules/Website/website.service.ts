@@ -22,6 +22,7 @@ import {
   WebsitePost,
 } from "../../../models/Website";
 import { ApiError } from "../../../utils/ApiError";
+import { logger } from "../../../utils/logger";
 import { msg } from "../../../utils/messages";
 import { requireId, routeParam } from "../../../utils/persist";
 import { listPublicNotices } from "../Notice/notice.service";
@@ -183,7 +184,12 @@ function lockMenus(menus: MenuItem[] | undefined): MenuItem[] {
 }
 
 function publicConfig(doc: Record<string, unknown>, schoolPrimary?: string) {
-  const primary = String(doc.themePrimary || schoolPrimary || "");
+  const rawPreset = String(doc.themePreset ?? "");
+  const primary = String(
+    (rawPreset === "custom" || !rawPreset
+      ? schoolPrimary || doc.themePrimary
+      : doc.themePrimary || schoolPrimary) ?? ""
+  );
   const preset = String(doc.themePreset ?? (primary ? "custom" : "heritage"));
   const theme = themeTokens(preset, primary);
   const stats = Array.isArray(doc.stats)
@@ -312,6 +318,16 @@ export async function saveConfig(body: Record<string, unknown>) {
   };
   doc.set(next);
   await doc.save();
+
+  // Keep SchoolSettings.theme.primary in sync when theme is updated from Website workspace
+  if (body.themePreset !== undefined || body.themePrimary !== undefined) {
+    const resolvedTheme = themeTokens(
+      String(doc.get("themePreset") ?? "heritage"),
+      String(doc.get("themePrimary") ?? "")
+    );
+    await SchoolSettings.updateMany({}, { $set: { "theme.primary": resolvedTheme.primary } });
+  }
+
   return doc.toObject();
 }
 
@@ -526,20 +542,32 @@ export async function markInquiry(id: string | undefined, read: boolean) {
 
 let cachedSite: { data: unknown; expiresAt: number } | null = null;
 
-/** Bust public_website Next Data Cache (tag public-site). No-op if origin/secret unset. */
+/** Bust public_website Next Data Cache (tag public-site). Works with or without REVALIDATE_SECRET. */
 function notifyPublicSiteRevalidate(): void {
-  const origin = env.publicOrigin.replace(/\/$/, "");
+  const base = env.publicRevalidateUrl || env.publicOrigin.replace(/\/$/, "");
+  if (!base) return;
   const secret = env.revalidateSecret;
-  if (!origin || !secret) return;
   // Node 18+ global fetch; avoid DOM lib in backend tsconfig
-  const fetchImpl = (globalThis as { fetch?: (url: string, init?: { method?: string; headers?: Record<string, string> }) => Promise<unknown> }).fetch;
+  const fetchImpl = (
+    globalThis as {
+      fetch?: (url: string, init?: { method?: string; headers?: Record<string, string> }) => Promise<{ ok: boolean; status: number }>;
+    }
+  ).fetch;
   if (!fetchImpl) return;
-  void fetchImpl(`${origin}/api/revalidate`, {
+  const url = `${base}/api/revalidate`;
+  const headers: Record<string, string> = {};
+  if (secret) headers["x-revalidate-secret"] = secret;
+  void fetchImpl(url, {
     method: "POST",
-    headers: { "x-revalidate-secret": secret },
-  }).catch(() => {
-    /* optional; 60s ISR TTL still applies */
-  });
+    headers,
+  })
+    .then((res) => {
+      if (!res.ok) logger.error("public revalidate failed", { status: res.status, url });
+    })
+    .catch((error: unknown) => {
+      const detail = error instanceof Error ? error.message : "unknown";
+      logger.error("public revalidate unreachable", { detail, url });
+    });
 }
 
 export function invalidatePublicSiteCache(): void {
@@ -550,7 +578,38 @@ export function invalidatePublicSiteCache(): void {
 export async function getPublicSite() {
   const now = Date.now();
   if (cachedSite && cachedSite.expiresAt > now) {
-    return cachedSite.data;
+    const [freshSettings, freshConfig] = await Promise.all([
+      SchoolSettings.findOne().select("name logoUrl motto address eiin establishedYear academicYear theme").lean(),
+      WebsiteConfig.findOne().select("themePreset themePrimary").lean(),
+    ]);
+    const cached = cachedSite.data as {
+      school: Record<string, unknown>;
+      config: Record<string, unknown>;
+    };
+    const schoolPrimary = (freshSettings as { theme?: { primary?: string } } | null)?.theme?.primary;
+    const rawPreset = String(freshConfig?.themePreset ?? (schoolPrimary ? "custom" : "heritage"));
+    const primary = String(
+      (rawPreset === "custom"
+        ? schoolPrimary || freshConfig?.themePrimary
+        : freshConfig?.themePrimary || schoolPrimary) ?? ""
+    );
+    const liveTheme = themeTokens(rawPreset, primary);
+    return {
+      ...cached,
+      school: {
+        name: freshSettings?.name ?? cached.school.name ?? "School",
+        logoUrl: freshSettings?.logoUrl ?? cached.school.logoUrl ?? "",
+        motto: freshSettings?.motto ?? cached.school.motto ?? "",
+        address: freshSettings?.address ?? cached.school.address ?? "",
+        eiin: freshSettings?.eiin ?? cached.school.eiin ?? "",
+        establishedYear: freshSettings?.establishedYear ?? cached.school.establishedYear ?? null,
+        academicYear: freshSettings?.academicYear ?? cached.school.academicYear ?? "",
+      },
+      config: {
+        ...cached.config,
+        theme: liveTheme,
+      },
+    };
   }
   await ensureWebsite();
   const [settings, config, pack, notices, posts, teachers, classes, subjects, people, pages, albums, files, albumCounts, videos, donors] = await Promise.all([

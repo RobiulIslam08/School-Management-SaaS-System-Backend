@@ -17,17 +17,21 @@ export async function updateSettings(body: Record<string, unknown>, user?: AuthU
   const before = await SchoolSettings.findOne();
   const settings = before ?? (await SchoolSettings.create({ name: "Your School" }));
   settings.set(body);
-  if (!settings.isModified()) {
-    throw new ApiError(400, msg.noChanges("School settings"));
+  if (settings.isModified()) {
+    await settings.save();
   }
-  await settings.save();
 
   // Synchronize theme primary with WebsiteConfig so public website updates instantly
   const themeObj = body.theme as { primary?: string } | undefined;
-  if (themeObj?.primary) {
+  const primaryColor = themeObj?.primary || settings.theme?.primary;
+  if (primaryColor) {
+    await WebsiteConfig.updateMany(
+      {},
+      { $set: { themePrimary: primaryColor, themePreset: "custom" } }
+    );
     await WebsiteConfig.updateOne(
       {},
-      { $set: { themePrimary: themeObj.primary, themePreset: "custom" } },
+      { $set: { themePrimary: primaryColor, themePreset: "custom" } },
       { upsert: true }
     );
   }

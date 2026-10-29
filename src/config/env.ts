@@ -52,6 +52,11 @@ export const env = {
   }),
   frontendOrigin: process.env.FRONTEND_ORIGIN ?? (isProduction ? "" : "http://localhost:3000"),
   publicOrigin: process.env.PUBLIC_ORIGIN ?? (isProduction ? "" : "http://localhost:3001"),
+  /**
+   * Preferred target for on-demand revalidate (Docker internal DNS).
+   * Falls back to PUBLIC_ORIGIN. Example: http://<public-app-name>:3000
+   */
+  publicRevalidateUrl: (process.env.PUBLIC_REVALIDATE_URL ?? "").replace(/\/$/, ""),
   /** Same value as public_website / frontend; used to bust Next Data Cache after CMS writes. */
   revalidateSecret: process.env.REVALIDATE_SECRET ?? "",
   cookieSecure: process.env.COOKIE_SECURE === "true" || isProduction,

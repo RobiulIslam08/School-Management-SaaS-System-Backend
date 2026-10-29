@@ -7,7 +7,9 @@ import { guardianPortal, listPublicNotices, publicAdmission, publicBranding, pub
 
 export const publicController = {
   async branding(_req: Request, res: Response): Promise<void> {
-    res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
     ok(res, await publicBranding(), msg.loaded("School branding"));
   },
   async classes(_req: Request, res: Response): Promise<void> {
