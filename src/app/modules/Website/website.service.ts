@@ -622,7 +622,7 @@ export async function getPublicSite() {
     ClassStructure.find({ isActive: true }).select("name code sections group level").sort({ sortOrder: 1, level: 1 }).lean(),
     Subject.find({ isActive: true }).select("name nameBn code classId group").sort({ sortOrder: 1 }).lean(),
     WebsitePerson.find({ status: "published" }).select("-__v").sort({ sortOrder: 1 }).lean(),
-    WebsitePage.find({ status: "published" }).select("slug menuKey titleBn titleEn summaryBn summaryEn sortOrder").sort({ sortOrder: 1 }).lean(),
+    WebsitePage.find({ status: "published" }).select("slug menuKey titleBn titleEn summaryBn summaryEn seoDescriptionBn seoDescriptionEn blocks sortOrder").sort({ sortOrder: 1 }).lean(),
     WebsiteAlbum.find({ status: "published" }).select("titleBn titleEn kind coverUrl sortOrder").sort({ sortOrder: 1 }).lean(),
     WebsiteFile.find({ status: "published" }).select("kind titleBn titleEn classId academicYear filename size").sort({ createdAt: -1 }).lean(),
     WebsiteMedia.aggregate<{ _id: { albumId: unknown; kind: string }; n: number }>([

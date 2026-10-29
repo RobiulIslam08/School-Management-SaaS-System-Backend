@@ -130,21 +130,19 @@ export const websiteController = {
     ok(res, await markInquiry(routeParam(req.params.id), req.body.read !== false), msg.updated("Inquiry"));
   },
   async site(_req: Request, res: Response): Promise<void> {
-    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
-    res.setHeader("Pragma", "no-cache");
-    res.setHeader("Expires", "0");
+    res.setHeader("Cache-Control", "public, max-age=15, stale-while-revalidate=300");
     ok(res, await getPublicSite(), msg.loaded("Website"));
   },
   async page(req: Request, res: Response): Promise<void> {
-    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.setHeader("Cache-Control", "public, max-age=30, stale-while-revalidate=300");
     ok(res, await getPublicPage(routeParam(req.params.slug)), msg.loaded("Page"));
   },
   async post(req: Request, res: Response): Promise<void> {
-    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.setHeader("Cache-Control", "public, max-age=30, stale-while-revalidate=300");
     ok(res, await getPublicPost(routeParam(req.params.id)), msg.loaded("Post"));
   },
   async album(req: Request, res: Response): Promise<void> {
-    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.setHeader("Cache-Control", "public, max-age=30, stale-while-revalidate=300");
     ok(res, await getPublicAlbum(routeParam(req.params.id)), msg.loaded("Album"));
   },
   async syllabus(req: Request, res: Response): Promise<void> {
